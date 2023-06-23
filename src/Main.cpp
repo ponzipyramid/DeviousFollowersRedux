@@ -66,7 +66,7 @@ namespace {
     void InitializeSerialization() {
         log::trace("Initializing cosave serialization...");
         auto* serde = GetSerializationInterface();
-        serde->SetUniqueID(_byteswap_ulong('SMPL'));
+        serde->SetUniqueID(_byteswap_ulong('DFFA'));
         serde->SetSaveCallback(DFF::DealManager::OnGameSaved);
         serde->SetRevertCallback(DFF::DealManager::OnRevert);
         serde->SetLoadCallback(DFF::DealManager::OnGameLoaded);

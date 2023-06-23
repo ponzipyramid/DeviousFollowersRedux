@@ -13,7 +13,6 @@ void Deal::InitQuest() {
     if (this->quest == nullptr) throw std::runtime_error(std::string("corresponding quest not found"));
 
     // TODO: validate self-conflicting rules within a single stage in each deal
-    // TODO: Check requirements and disable automatically
     for (std::string requirement : requirements) {
         if (handler->LookupModByName(requirement) == nullptr) {
             SKSE::log::info("Missing mod {}", requirement);
