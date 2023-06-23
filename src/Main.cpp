@@ -1,4 +1,3 @@
-#include <DFF/HitCounterManager.h>
 #include <DFF/DealManager.h>
 
 #include "Config.h"
@@ -95,31 +94,6 @@ namespace {
         } else {
             stl::report_and_fail("Failure to register Papyrus bindings.");
         }
-    }
-
-    /**
-     * Initialize the trampoline space for function hooks.
-     *
-     * <p>
-     * Function hooks are one of the most powerful features available to SKSE developers, allowing you to replace
-     * functions with your own, or replace a function call with a call to another function. However, to do this, we
-     * need a code snippet that replicates the first instructions of the original code we overwrote, in order to be
-     * able to call back to the original control flow with all the same functionality.
-     * </p>
-     *
-     * <p>
-     * CommonLibSSE comes with functionality to allocate trampoline space, including a common singleton space we can
-     * access from anywhere. While this is not necessarily the most advanced use of trampolines and hooks, this will
-     * suffice for our demo project.
-     * </p>
-     */
-    void InitializeHooking() {
-        log::trace("Initializing trampoline...");
-        auto& trampoline = GetTrampoline();
-        trampoline.create(64);
-        log::trace("Trampoline initialized.");
-
-        DFF::InitializeHook(trampoline);
     }
 
     /**

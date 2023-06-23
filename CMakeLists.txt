@@ -21,12 +21,14 @@ configure_file(
         @ONLY)
 
 set(headers
-        include/DFF/DFF.h)
+        include/DFF/DFF.h
+        include/DFF/Deal.h
+        include/DFF/DealManager.h
+    )
 
 set(sources
         src/Config.cpp
         src/Deal.cpp
-        src/HitCounterManager.cpp
         src/DealManager.cpp
         src/Main.cpp
         src/Papyrus.cpp
@@ -34,7 +36,6 @@ set(sources
         ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
 
 set(tests
-        test/HitCounterManager.cpp
         test/DealManager.cpp
     )
 
@@ -42,8 +43,7 @@ source_group(
         TREE ${CMAKE_CURRENT_SOURCE_DIR}
         FILES
         ${headers}
-        ${sources}
-        ${tests})
+        ${sources})
 
 #########################################################################################################################
 ### Build options
@@ -86,34 +86,6 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/DFF"
 
 install(TARGETS ${PROJECT_NAME}
         DESTINATION "${CMAKE_INSTALL_LIBDIR}")
-
-########################################################################################################################
-## Configure unit tests
-########################################################################################################################
-if(BUILD_TESTS)
-    find_package(Catch2 CONFIG REQUIRED)
-
-    include(CTest)
-    include(Catch)
-
-    add_executable(
-            ${PROJECT_NAME}Tests
-            ${headers}
-            ${tests} "src/Deal.cpp")
-
-    target_link_libraries(
-            ${PROJECT_NAME}Tests
-            PRIVATE
-            ${PROJECT_NAME}
-            Catch2::Catch2WithMain)
-
-    target_precompile_headers(${PROJECT_NAME}Tests
-            PRIVATE
-            src/PCH.h)
-
-    catch_discover_tests(${PROJECT_NAME}Tests)
-    add_test(NAME ${PROJECT_NAME}Tests COMMAND ${PROJECT_NAME}Tests)
-endif()
 
 ########################################################################################################################
 ## Automatic plugin deployment
