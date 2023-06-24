@@ -221,7 +221,7 @@ void DealManager::InitQuestData() {
     }
 }
 
-int DealManager::SelectDeal(int track, float bias) {
+int DealManager::SelectDeal(int track, int maxModDeals, float bias) {
     RegeneratePotentialDeals(true);
 
     std::vector<std::string> candidateDeals;
@@ -343,7 +343,7 @@ void DealManager::ActivateDeal(int id) {
 }
 
 
-void DealManager::RegeneratePotentialDeals(bool considerAll) {
+void DealManager::RegeneratePotentialDeals(int maxModDeals) {
     std::vector<std::string> validatedClassic;
     std::vector<std::string> validatedModular;
 
@@ -400,7 +400,6 @@ bool DealManager::DoesActiveExclude(Conflictor* entity) {
 
 void DealManager::RemoveDeal(RE::TESQuest* quest) {
     RE::FormID formId = quest->GetFormID();
-    
 
     Deal* deal = formMap[formId];
     std::string actualId = deal->GetFullName();
@@ -531,8 +530,6 @@ void DealManager::ToggleStageVariation(std::string fullName, int stageIndex, int
     }
 }
 
-void DealManager::SetMaxModularDeals(int maxDeals) { this->maxModDeals = maxDeals; }
-
 void DealManager::OnRevert(SerializationInterface*) {
     std::unique_lock lock(GetSingleton()._lock);
     GetSingleton().id_name_map.clear();
@@ -655,9 +652,6 @@ void DealManager::OnGameSaved(SerializationInterface* serde) {
                 log::info("Saving {} is {} ", altStage.GetName(), enabled);
             }
         }
-
-        auto maxModDeals = GetSingleton().maxModDeals;
-        serde->WriteRecordData(&maxModDeals, sizeof(maxModDeals));
     }
 }
 
@@ -754,10 +748,6 @@ void DealManager::OnGameLoaded(SerializationInterface* serde) {
                     i++;
                 }
             }
-
-            int maxModDeals;
-            serde->ReadRecordData(&maxModDeals, sizeof(maxModDeals));
-            GetSingleton().maxModDeals = maxModDeals;
         }
     }
 }

@@ -33,7 +33,7 @@ namespace DFF {
 
         void InitQuestData();
 
-        int SelectDeal(int track, float prefersModular);
+        int SelectDeal(int track, int maxModDeals, float prefersModular);
 
 
         /**
@@ -98,8 +98,6 @@ namespace DFF {
         void ToggleRule(std::string group, int id, bool enabled);
         void ToggleStageVariation(std::string name, int stageIndex, int varIndex, bool enabled);
 
-        void SetMaxModularDeals(int maxDeals);
-
         /**
          * The serialization handler for reverting game state.
          *
@@ -127,7 +125,7 @@ namespace DFF {
 
 
     private:
-        void RegeneratePotentialDeals(bool considerAll);
+        void RegeneratePotentialDeals(int maxModDeals);
         bool DoesActiveExclude(Conflictor* entity);
 
         DealManager() = default;
@@ -155,8 +153,6 @@ namespace DFF {
         std::vector<Rule*> candidateRules;
 
         std::unordered_map<Conflictor*, std::unordered_set<Conflictor*>> conflicts;
-
-        int maxModDeals = 3;
     };
 #pragma warning(pop)
 }

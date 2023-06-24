@@ -11,8 +11,8 @@ using namespace SKSE;
 namespace {
     constexpr std::string_view PapyrusClass = "DealManager";
 
-    int32_t SelectDeal(StaticFunctionTag*, int track, float_t prefersModular) {
-        return DealManager::GetSingleton().SelectDeal(track, prefersModular);
+    int32_t SelectDeal(StaticFunctionTag*, int track, int maxModDeals, float_t prefersModular) {
+        return DealManager::GetSingleton().SelectDeal(track, maxModDeals, prefersModular);
     }
 
     void ActivateDeal(StaticFunctionTag*, int32_t id) { DealManager::GetSingleton().ActivateDeal(id); }
@@ -52,10 +52,6 @@ namespace {
     void ToggleStageVariation(StaticFunctionTag*, std::string name, int stageIndex, int varIndex, bool enabled) {
         DealManager::GetSingleton().ToggleStageVariation(name, stageIndex, varIndex, enabled);
     }
-
-    void SetMaxModularDeals(StaticFunctionTag*, int maxDeals) {
-        DealManager::GetSingleton().SetMaxModularDeals(maxDeals);
-    }
 }
 
 bool DFF::RegisterDealManager(IVirtualMachine* vm) {
@@ -75,8 +71,6 @@ bool DFF::RegisterDealManager(IVirtualMachine* vm) {
 
     vm->RegisterFunction("ToggleRule", PapyrusClass, ToggleRule);
     vm->RegisterFunction("ToggleStageVariation", PapyrusClass, ToggleStageVariation);
-
-    vm->RegisterFunction("SetMaxModularDeals", PapyrusClass, SetMaxModularDeals);
 
     return true;
 }
