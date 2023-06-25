@@ -47,12 +47,19 @@ namespace DFF {
             return _debug;
         }
 
+        [[nodiscard]] inline const std::string GetForcedDealName() const noexcept { return forcedDealName; }
+
         [[nodiscard]] static const Config& GetSingleton() noexcept;
 
     private:
         articuno_serde(ar) {
             ar <=> articuno::kv(_debug, "debug");
+            ar <=> articuno::kv(forcedDealName, "forcedDeal");
+            std::transform(forcedDealName.begin(), forcedDealName.end(), forcedDealName.begin(), ::tolower);
+
         }
+
+        std::string forcedDealName;
 
         Debug _debug;
         friend class articuno::access;

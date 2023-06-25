@@ -6,11 +6,11 @@
 
 using namespace DFF;
 
-void Deal::InitQuest() {
+bool Deal::InitQuest() {
     RE::TESDataHandler* handler = RE::TESDataHandler::GetSingleton();
     RE::FormID formId = handler->LookupFormID(this->formId, this->espName);
     this->quest = RE::TESForm::LookupByID<RE::TESQuest>(formId);
-    if (this->quest == nullptr) throw std::runtime_error(std::string("corresponding quest not found"));
+    if (!this->quest) return false;
 
     // TODO: validate self-conflicting rules within a single stage in each deal
     for (std::string requirement : requirements) {
@@ -20,20 +20,15 @@ void Deal::InitQuest() {
             break;
         }
     }
+
+    return true;
 }
 
-void Rule::Init() { 
-    RE::TESDataHandler* handler = RE::TESDataHandler::GetSingleton(); 
-    for (std::string requirement : requirements) {
-        if (handler->LookupModByName(requirement) == nullptr) {
-            SKSE::log::info("{} is missing mod {}", name, requirement);
-            enabled = false;
-            break;
-        }
+bool Deal::InitQuestData() {
+    if (!this->quest) {
+        return false;
     }
-}
 
-void Deal::InitQuestData() {
     if (this->quest->IsRunning()) {
         for (int i = 0; i < stages.size(); i++) {
             if (stages[i].index == this->quest->currentStage) {
@@ -50,10 +45,23 @@ void Deal::InitQuestData() {
             }
         }
     }
+
+    return true;
 }
 
+
+void Rule::Init() { 
+    RE::TESDataHandler* handler = RE::TESDataHandler::GetSingleton(); 
+    for (std::string requirement : requirements) {
+        if (handler->LookupModByName(requirement) == nullptr) {
+            SKSE::log::info("{} is missing mod {}", name, requirement);
+            enabled = false;
+            break;
+        }
+    }
+}
 bool Deal::ConflictsWith(Deal* other) {
-    if (excludeIds.count(other->name)) {
+    if (excludeDeals.count(other->name)) {
         return true;
     }
     for (int i = 0; i < other->rules.size(); i++) {
@@ -66,6 +74,10 @@ bool Deal::ConflictsWith(Deal* other) {
 }
 
 bool Deal::ConflictsWith(Rule* other) {
+    if (excludeRules.count(other->GetFullName())) {
+        return true;
+    }
+
     for (int i = 0; i < rules.size(); i++) {
         if (rules[i].ConflictsWith(other)) {
             return true;
@@ -146,16 +158,18 @@ void Deal::SetMaxStage(int max) {
     maxStage = max; 
 }
 
-
 Deal::Deal(std::string group, std::string name) { 
     this->name = name;
     this->fullName = group + '/' + name;
+    std::transform(this->fullName.begin(), this->fullName.end(), this->fullName.begin(), ::tolower);
 }
 
 Rule::Rule(std::string group, std::string name) {
     this->name = name;
     this->fullName = group + '/' + name;
+    std::transform(this->fullName.begin(), this->fullName.end(), this->fullName.begin(), ::tolower);
 }
+
 void Stage::RandomizeAltIndex() {
     // run thru deals and if disabled don't add them to list
     std::vector<int> indices;

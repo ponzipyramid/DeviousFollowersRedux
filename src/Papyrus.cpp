@@ -11,8 +11,8 @@ using namespace SKSE;
 namespace {
     constexpr std::string_view PapyrusClass = "DealManager";
 
-    int32_t SelectDeal(StaticFunctionTag*, int track, int maxModDeals, float_t prefersModular) {
-        return DealManager::GetSingleton().SelectDeal(track, maxModDeals, prefersModular);
+    int32_t SelectDeal(StaticFunctionTag*, int track, int maxModDeals, float_t prefersModular, int lastRejectedId) {
+        return DealManager::GetSingleton().SelectDeal(track, maxModDeals, prefersModular, lastRejectedId);
     }
 
     void ActivateDeal(StaticFunctionTag*, int32_t id) { DealManager::GetSingleton().ActivateDeal(id); }
@@ -52,6 +52,10 @@ namespace {
     void ToggleStageVariation(StaticFunctionTag*, std::string name, int stageIndex, int varIndex, bool enabled) {
         DealManager::GetSingleton().ToggleStageVariation(name, stageIndex, varIndex, enabled);
     }
+
+    int GetDealNextQuestStage(StaticFunctionTag*, int id) { 
+        return DealManager::GetSingleton().GetDealNextQuestStage(id);
+    }
 }
 
 bool DFF::RegisterDealManager(IVirtualMachine* vm) {
@@ -71,6 +75,7 @@ bool DFF::RegisterDealManager(IVirtualMachine* vm) {
 
     vm->RegisterFunction("ToggleRule", PapyrusClass, ToggleRule);
     vm->RegisterFunction("ToggleStageVariation", PapyrusClass, ToggleStageVariation);
+    vm->RegisterFunction("GetDealNextQuestStage", PapyrusClass, GetDealNextQuestStage);
 
     return true;
 }

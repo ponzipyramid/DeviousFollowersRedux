@@ -47,6 +47,7 @@ namespace DFF {
             ar <=> articuno::kv(requirements, "requirements");
             ar <=> articuno::kv(_disabled, "disabled");
 
+
             ar <=> articuno::kv(alt, "alt");
 
             if (!_builtInId.empty()) {
@@ -75,7 +76,6 @@ namespace DFF {
         std::vector<Rule> alt;
 
         std::vector<std::string> requirements;
-
 
         friend class articuno::access;
     };
@@ -139,8 +139,8 @@ namespace DFF {
         bool ConflictsWith(Rule* other);
         void SetMaxStage(int maxStage);
 
-        void InitQuest();
-        void InitQuestData();
+        bool InitQuest();
+        bool InitQuestData();
         void NextStage();
         void Reset();
         bool HasNextStage();
@@ -165,9 +165,10 @@ namespace DFF {
             ar <=> articuno::kv(stages, "stages");
             ar <=> articuno::kv(_formId, "formId");
             ar <=> articuno::kv(_builtInId, "builtInId");
-            ar <=> articuno::kv(excludeIds, "exclude");
             ar <=> articuno::kv(description, "description");
             ar <=> articuno::kv(_modular, "modular");
+            ar <=> articuno::kv(excludeDeals, "excludeDeals");
+            ar <=> articuno::kv(excludeRules, "excludeRules");
 
             formId = std::stoul(_formId, nullptr, 16);
             modular = _modular == "true";
@@ -207,8 +208,9 @@ namespace DFF {
         std::vector<Stage> stages;
         std::vector<Rule> rules;
 
-        std::unordered_set<std::string> excludeIds;
         std::vector<std::string> requirements;
+        std::unordered_set<std::string> excludeRules;
+        std::unordered_set<std::string> excludeDeals;
 
         RE::TESQuest* quest;
 

@@ -29,6 +29,13 @@ int PickRandom(int max) {
     return distr(gen);
 }
 
+int PickRandom(int min, int max) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distr(min, max - 1);
+    return distr(gen);
+}
+
 bool IsDirValid(std::string dir) {
     bool valid = true;
     struct stat info;
@@ -198,14 +205,24 @@ void DealManager::InitDeals() {
 void DealManager::InitQuests() {
     log::info("Initializing deal quests");
 
+    std::vector<std::string> toRemove;
+
     for (const auto& [key, value] : deals) {
-        deals[key].InitQuest();
-        RE::FormID formId = deals[key].GetQuest()->GetFormID();
-        formMap[formId] = &deals[key];
+        if (deals[key].InitQuest()) {
+            RE::FormID formId = deals[key].GetQuest()->GetFormID();
+            formMap[formId] = &deals[key];
+        } else {
+            log::info("Could not initialize quest data for {} - unregistering", key);
+            toRemove.push_back(key);
+        }
     }
 
     for (auto& [key, rule] : rules) {
         rule.Init();
+    }
+
+    for (const auto& key : toRemove) {
+        deals.erase(key);
     }
 }
 
@@ -213,66 +230,86 @@ void DealManager::InitQuestData() {
     log::info("Initializing deal quest data");
 
     for (const auto& [key, value] : deals) {
-        deals[key].InitQuestData();
-        if (deals[key].IsActive()) {
+        if (deals[key].InitQuestData() && deals[key].IsActive()) {
             log::info("{} is active", key);
             activeDeals.insert(key);
         }
     }
 }
 
-int DealManager::SelectDeal(int track, int maxModDeals, float bias) {
-    RegeneratePotentialDeals(true);
+int DealManager::SelectDeal(int track, int maxModDeals, float bias, int lastRejectedId) {
 
-    std::vector<std::string> candidateDeals;
-    if (candidateClassicDeals.empty()) {
-        candidateDeals = candidateModularDeals;
-    } else if (candidateModularDeals.empty()) {
-        candidateDeals = candidateClassicDeals;
-    } else {
-        int biasTest = PickRandom(100);
-        candidateDeals = biasTest < bias ? candidateClassicDeals : candidateModularDeals;
+    Deal* chosen = nullptr;
+    std::string name;
+    std::string forcedDealName = Config::GetSingleton().GetForcedDealName();
+
+    if (forcedDealName != "") {
+        SKSE::log::info("Attempting to select forced deal {}", forcedDealName);
+
+        name = forcedDealName;
+        Deal* forcedDeal = &deals[forcedDealName];
+        if (forcedDeal != nullptr && forcedDeal->HasNextStage() && !DoesActiveExclude(forcedDeal)) {
+            SKSE::log::info("Successfully selected forced deal");
+            chosen = forcedDeal;
+        } else {
+            SKSE::log::info("Failed to select forced deal");
+        }
+
     }
+    if (chosen == nullptr) {
+        RegeneratePotentialDeals(true, lastRejectedId);
 
-    int numCandidates = candidateDeals.size();
+        std::vector<std::string> candidateDeals;
+        if (candidateClassicDeals.empty()) {
+            candidateDeals = candidateModularDeals;
+        } else if (candidateModularDeals.empty()) {
+            candidateDeals = candidateClassicDeals;
+        } else {
+            int biasTest = PickRandom(100);
+            candidateDeals = biasTest < bias ? candidateClassicDeals : candidateModularDeals;
+        }
 
-    if (!numCandidates) {
-        return 0;
+        int numCandidates = candidateDeals.size();
+
+        if (!numCandidates) {
+            return 0;
+        }
+        int index = PickRandom(numCandidates);
+
+        name = candidateDeals[index];
+
+        chosen = &deals[name];
+    
     }
-    int index = PickRandom(numCandidates);
-
-    std::string name = candidateDeals[index];
-
-    Deal& chosen = deals[name];
+    
     int id;
-    if (chosen.IsBuiltIn()) {        
-        id_name_map.erase(chosen.GetBuiltInId() + chosen.GetStage());
+    if (chosen->IsBuiltIn()) {        
+        id_name_map.erase(chosen->GetBuiltInId() + chosen->GetStage());
 
-        id = chosen.GetBuiltInId();
+        id = chosen->GetBuiltInId();
 
-        if (chosen.IsModular()) { 
+        if (chosen->IsModular()) { 
             std::vector<Rule*> leveledCandidates;
             log::info("{} rules available", candidateRules.size());
             for (Rule* rule : candidateRules) {
-                if (rule->IsRuleForLevel(chosen.GetNextStage())) {
+                if (rule->IsRuleForLevel(chosen->GetNextStage())) {
                     leveledCandidates.push_back(rule);
                 }
             }
             int index = PickRandom(leveledCandidates.size());
             Rule* rule = leveledCandidates[index];
-            log::info("Chose modular deal {} stage {} and rule {}", name, chosen.GetNextStage(), rule->GetFullName());
             id += rule->GetBuiltInId();
             return id;
         } else {
-            id += chosen.GetNextStage();
+            id += chosen->GetNextStage();
         }
 
     } else if (name_id_map.count(name)) {
         id = name_id_map[name];
     } else {
-        id = 1;
+        id = 1000;
         while (id_name_map.count(id)) {
-            id = PickRandom(1000000);
+            id++;
         }
     }
     
@@ -281,9 +318,9 @@ int DealManager::SelectDeal(int track, int maxModDeals, float bias) {
 
     if (track) selectedDeal = name;
     
-    log::info("Chose deal {} stage {}", name, chosen.GetNextStage());
+    log::info("Chose deal {} stage {} - assigned id {}", name, chosen->GetNextStage(), id);
 
-    return (chosen.IsBuiltIn() ? 1 : -1) * id;
+    return id;
 }
 
 
@@ -317,7 +354,7 @@ void DealManager::ActivateDeal(int id) {
     int actualId = abs(id);
     if (!id_name_map.count(actualId)) {
         if (id < 0) {
-            // addon deal
+            // invalid deal
             return;
         } else if (id >= 100) {
             // modular deal
@@ -342,16 +379,47 @@ void DealManager::ActivateDeal(int id) {
     log::info("Activating {}", id_name_map[actualId]);
 }
 
+Rule* DealManager::GetRuleById(int id) {
+    while (id >= 100) {
+        id -= 100;
+    }
+    for (auto& [key, rule] : rules) {
+        if (rule.GetBuiltInId() == id) {
+            return &rule;
+        }
+    }
 
-void DealManager::RegeneratePotentialDeals(int maxModDeals) {
+    return nullptr;
+}
+
+
+void DealManager::RegeneratePotentialDeals(int maxModDeals, int lastRejectedId) {
     std::vector<std::string> validatedClassic;
     std::vector<std::string> validatedModular;
 
+    Rule* lastRejectedRule;
+    Deal* lastRejectedDeal;
+
+    if (lastRejectedId > 100 && lastRejectedId < 1000) {
+        lastRejectedRule = GetRuleById(lastRejectedId);
+    } else {
+        lastRejectedDeal = GetDealById(lastRejectedId);
+    }
+
     candidateRules.clear();
+    bool canAddRejected = false;
     for (auto& [key, rule] : rules) {
         if (!DoesActiveExclude(&rule) && rule.IsEnabled()) {
-            candidateRules.push_back(&rule);
+            if (&rule == lastRejectedRule) {
+                canAddRejected = true;
+            } else {
+                candidateRules.push_back(&rule);
+            }
         }
+    }
+
+    if (canAddRejected && candidateRules.empty()) {
+        candidateRules.push_back(lastRejectedRule);
     }
 
     int currActiveModularDeals = 0;
@@ -364,6 +432,7 @@ void DealManager::RegeneratePotentialDeals(int maxModDeals) {
     
     }
 
+    canAddRejected = false;
     for (auto& [id, value] : deals) {
         Deal* deal = &deals[id];
         if (deal->IsModular() && deal->HasNextStage()) {
@@ -371,15 +440,25 @@ void DealManager::RegeneratePotentialDeals(int maxModDeals) {
                 (activeDeals.count(deal->GetFullName()) || (currActiveModularDeals + 1) <= maxModDeals))
                 validatedModular.push_back(deal->GetFullName());
         } else if (deal->HasNextStage() && !DoesActiveExclude(deal)) {
-            validatedClassic.push_back(deal->GetFullName());
+            if (deal == lastRejectedDeal) {
+                canAddRejected = true;
+            } else {
+                validatedClassic.push_back(deal->GetFullName());
+            }
         }
     }
+
+     if (canAddRejected && validatedClassic.empty()) {
+        validatedClassic.push_back(lastRejectedDeal->GetFullName());
+     }
 
     log::info("RegeneratePotentialDeals: {} active deals, {} potential deals {} potential rules", activeDeals.size(),
               validatedClassic.size() + validatedModular.size(), candidateRules.size());
     candidateClassicDeals = validatedClassic;
     candidateModularDeals = validatedModular;
 }
+
+
 
 bool DealManager::DoesActiveExclude(Conflictor* entity) { 
     for (std::string dealId : activeDeals) {
@@ -420,7 +499,9 @@ void DealManager::RemoveDeal(RE::TESQuest* quest) {
 
 int DealManager::GetStage(int id) { return deals[id_name_map[id]].GetStage(); }
 
-RE::TESQuest* DealManager::GetDealQuest(int id) { return deals[id_name_map[id]].GetQuest(); }
+RE::TESQuest* DealManager::GetDealQuest(int id) { 
+    return deals[id_name_map[id]].GetQuest(); 
+}
 
 bool DealManager::IsDealActive(int id) { return activeDeals.count(id_name_map[id]); }
 
@@ -528,6 +609,10 @@ void DealManager::ToggleStageVariation(std::string fullName, int stageIndex, int
     } else {
         log::info("Couldn't find deal to toggle stage {}", fullName);
     }
+}
+
+int DealManager::GetDealNextQuestStage(int id) { 
+    return GetDealById(id)->GetNextStage();
 }
 
 void DealManager::OnRevert(SerializationInterface*) {
