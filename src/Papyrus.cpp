@@ -37,8 +37,8 @@ namespace {
         DealManager::GetSingleton().LoadRuleMaxStage(quest, max);
     }
 
-    std::vector<RE::TESQuest*> GetActiveDeals(StaticFunctionTag*, bool classic) {
-        return DealManager::GetSingleton().GetActiveDeals(classic);
+    std::vector<RE::TESQuest*> GetActiveDeals(StaticFunctionTag*, bool classic, bool builtIn) {
+        return DealManager::GetSingleton().GetActiveDeals(classic, builtIn);
     }
     std::string GetDealName(StaticFunctionTag*, RE::TESQuest* quest) {
         return DealManager::GetSingleton().GetDealName(quest);
@@ -55,6 +55,14 @@ namespace {
 
     int GetDealNextQuestStage(StaticFunctionTag*, int id) { 
         return DealManager::GetSingleton().GetDealNextQuestStage(id);
+    }
+
+    RE::TESGlobal* GetDealCostGlobal(StaticFunctionTag*, RE::TESQuest* q) {
+        return DealManager::GetSingleton().GetDealCostGlobal(q);
+
+    }
+    RE::TESGlobal* GetDealTimerGlobal(StaticFunctionTag*, RE::TESQuest* q) {
+        return DealManager::GetSingleton().GetDealTimerGlobal(q);
     }
 }
 
@@ -77,5 +85,7 @@ bool DFF::RegisterDealManager(IVirtualMachine* vm) {
     vm->RegisterFunction("ToggleStageVariation", PapyrusClass, ToggleStageVariation);
     vm->RegisterFunction("GetDealNextQuestStage", PapyrusClass, GetDealNextQuestStage);
 
+    vm->RegisterFunction("GetDealCostGlobal", PapyrusClass, GetDealCostGlobal);
+    vm->RegisterFunction("GetDealTimerGlobal", PapyrusClass, GetDealTimerGlobal);
     return true;
 }

@@ -325,6 +325,10 @@ int DealManager::SelectDeal(int track, int maxModDeals, float bias, int lastReje
 
 
 Deal* DealManager::GetDealById(int id, bool modular) {
+    if (id_name_map.count(id)) {
+        return &deals[id_name_map[id]];
+    }
+    
     std::vector<Deal*>& checkDeals = builtInDeals;
 
     int n = id;
@@ -547,12 +551,12 @@ void DealManager::LoadRuleMaxStage(RE::TESQuest* quest, int maxStage) {
 }
 
 
-std::vector<RE::TESQuest*> DealManager::GetActiveDeals(bool classic) { 
+std::vector<RE::TESQuest*> DealManager::GetActiveDeals(bool classic, bool builtIn) { 
     std::vector<RE::TESQuest*> quests;
 
     if (classic) {
         for (std::string dealId : activeDeals) {
-            if (!deals[dealId].IsModular()) {
+            if (!deals[dealId].IsModular() && deals[dealId].IsBuiltIn() == builtIn) {
                 quests.push_back(deals[dealId].GetQuest());
                 log::info("Added deal {}", deals[dealId].GetName());
             }
@@ -612,8 +616,15 @@ void DealManager::ToggleStageVariation(std::string fullName, int stageIndex, int
 }
 
 int DealManager::GetDealNextQuestStage(int id) { 
-    return GetDealById(id)->GetNextStage();
+    Deal* deal = GetDealById(id);
+    int stage = deal->GetNextStage();
+    log::info("GetDealNextQuestStage {} w/ stage", deal->GetName(), stage);
+    return stage;
 }
+
+RE::TESGlobal* DealManager::GetDealCostGlobal(RE::TESQuest* q) { return formMap[q->GetFormID()]->GetCostGlobal(); }
+
+RE::TESGlobal* DealManager::GetDealTimerGlobal(RE::TESQuest* q) { return formMap[q->GetFormID()]->GetTimerGlobal(); }
 
 void DealManager::OnRevert(SerializationInterface*) {
     std::unique_lock lock(GetSingleton()._lock);

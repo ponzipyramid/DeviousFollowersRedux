@@ -12,6 +12,12 @@ bool Deal::InitQuest() {
     this->quest = RE::TESForm::LookupByID<RE::TESQuest>(formId);
     if (!this->quest) return false;
 
+    formId = handler->LookupFormID(this->costFormID, this->espName);
+    this->costGlobal = RE::TESForm::LookupByID<RE::TESGlobal>(formId);
+
+    formId = handler->LookupFormID(this->timerFormID, this->espName);
+    this->timerGlobal = RE::TESForm::LookupByID<RE::TESGlobal>(formId);
+
     // TODO: validate self-conflicting rules within a single stage in each deal
     for (std::string requirement : requirements) {
         if (handler->LookupModByName(requirement) == nullptr) {
@@ -170,14 +176,18 @@ Rule::Rule(std::string group, std::string name) {
     std::transform(this->fullName.begin(), this->fullName.end(), this->fullName.begin(), ::tolower);
 }
 
+int Deal::GetNextStage() {
+    stages[stageIndex + 1].RandomizeAltIndex();
+    return stages[stageIndex + 1].GetQuestStageIndex(); 
+}
+
 void Stage::RandomizeAltIndex() {
     // run thru deals and if disabled don't add them to list
     std::vector<int> indices;
     if (enabled) indices.push_back(-1);
 
-    for (int i = 0; i < alt.size(); i++) 
+    for (int i = 0; i < alt.size(); i++)
         if (alt[i].enabled) indices.push_back(i);
-    
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -186,10 +196,7 @@ void Stage::RandomizeAltIndex() {
     SKSE::log::info("Selected alt index {}", altIndex);
 }
 
-int Deal::GetNextStage() {
-    stages[stageIndex + 1].RandomizeAltIndex();
-    return stages[stageIndex + 1].GetQuestStageIndex(); 
-}
+int Stage::GetQuestStageIndex() { return altIndex < 0 ? index : alt[altIndex].GetQuestStageIndex(); }
 
 std::vector<Rule*> Deal::GetActiveRules() {
     std::vector<Rule*> activeRules;
@@ -212,7 +219,6 @@ std::vector<Stage*> Deal::GetActiveStages() {
     return activeStages;
 }
 
-int Stage::GetQuestStageIndex() { return altIndex < 0 ? index : alt[altIndex].GetQuestStageIndex(); }
 
 void Deal::ToggleStageVariation(int stageIndex, int varIndex, bool enabled) { 
     SKSE::log::info("Toggling stage {}", stages[stageIndex].GetName());

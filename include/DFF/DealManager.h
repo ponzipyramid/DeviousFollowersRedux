@@ -91,7 +91,7 @@ namespace DFF {
 
         void LoadRuleMaxStage(RE::TESQuest*, int maxStage);
 
-        std::vector<RE::TESQuest*> GetActiveDeals(bool classic);
+        std::vector<RE::TESQuest*> GetActiveDeals(bool classic, bool builtIn);
         std::string GetDealName(RE::TESQuest* quest);
         std::vector<std::string> GetDealRules(RE::TESQuest* quest);
 
@@ -99,6 +99,9 @@ namespace DFF {
         void ToggleStageVariation(std::string name, int stageIndex, int varIndex, bool enabled);
 
         int GetDealNextQuestStage(int id);
+
+        RE::TESGlobal* GetDealCostGlobal(RE::TESQuest* q);
+        RE::TESGlobal* GetDealTimerGlobal(RE::TESQuest* q);
 
         /**
          * The serialization handler for reverting game state.

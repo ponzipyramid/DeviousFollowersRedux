@@ -135,6 +135,9 @@ namespace DFF {
         [[nodiscard]] inline bool IsMaxStageDifferent() { return maxStage != stages.size(); }
         [[nodiscard]] inline std::vector<Stage>& GetStages() { return stages; }
 
+        [[nodiscard]] inline RE::TESGlobal* GetCostGlobal() const { return costGlobal; }
+        [[nodiscard]] inline RE::TESGlobal* GetTimerGlobal() const { return timerGlobal; }
+
         bool ConflictsWith(Deal* other);
         bool ConflictsWith(Rule* other);
         void SetMaxStage(int maxStage);
@@ -170,6 +173,9 @@ namespace DFF {
             ar <=> articuno::kv(excludeDeals, "excludeDeals");
             ar <=> articuno::kv(excludeRules, "excludeRules");
 
+            ar <=> articuno::kv(costFormID, "costFormID");
+            ar <=> articuno::kv(timerFormID, "timerFormID");
+
             formId = std::stoul(_formId, nullptr, 16);
             modular = _modular == "true";
 
@@ -192,7 +198,6 @@ namespace DFF {
             maxStage = stages.size();
         }
 
-
         std::string fullName;
         std::string name;
 
@@ -213,6 +218,12 @@ namespace DFF {
         std::unordered_set<std::string> excludeDeals;
 
         RE::TESQuest* quest;
+
+        RE::FormID costFormID;
+        RE::FormID timerFormID;
+
+        RE::TESGlobal* costGlobal;
+        RE::TESGlobal* timerGlobal;
 
         bool modular;
 
