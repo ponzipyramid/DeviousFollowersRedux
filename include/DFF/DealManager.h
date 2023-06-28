@@ -51,11 +51,18 @@ namespace DFF {
         void RemoveDeal(RE::TESQuest* quest);
 
         /**
-         * Progress deal and return the stage index.
+         * Return the quest stage
          *
          * @param The id of the deal.
          */
         int GetStage(int id);
+
+        /**
+         * Return the next stage
+         *
+         * @param The id of the deal.
+         */
+        int GetStageIndex(RE::TESQuest* quest);
 
         /**
          * Allows for checking if a particular deal is active. Generally used for displaying buy out deal option.
@@ -102,6 +109,9 @@ namespace DFF {
 
         RE::TESGlobal* GetDealCostGlobal(RE::TESQuest* q);
         RE::TESGlobal* GetDealTimerGlobal(RE::TESQuest* q);
+
+        std::vector<std::string> GetGroupNames(bool custom);
+        std::vector<RE::TESQuest*> GetGroupDeals(std::string groupName);
 
         /**
          * The serialization handler for reverting game state.

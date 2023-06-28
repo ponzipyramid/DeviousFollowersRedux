@@ -64,6 +64,54 @@ namespace {
     RE::TESGlobal* GetDealTimerGlobal(StaticFunctionTag*, RE::TESQuest* q) {
         return DealManager::GetSingleton().GetDealTimerGlobal(q);
     }
+    int GetStageIndex(StaticFunctionTag*, RE::TESQuest* q) { 
+        return DealManager::GetSingleton().GetStageIndex(q);
+    }
+
+    std::vector<TESForm*> GetInventoryNamedObjects(StaticFunctionTag*, RE::TESObjectREFR* a_container,
+                                                                   std::vector<std::string> itemNames) {
+        std::vector<TESForm*> refrs;
+        
+        if (!a_container) {
+            return refrs;
+        }
+
+        auto inventory = a_container->GetInventory();
+        for (const auto& [form, data] : inventory) {
+            if (!form->GetPlayable() || form->GetName()[0] == '\0') continue;
+            if (data.second->IsQuestObject()) continue;
+            
+            std::string formName = form->GetName();
+            for (const auto& iName : itemNames) {
+
+                std::string itemName(iName);
+
+                std::transform(itemName.begin(), itemName.end(), itemName.begin(),
+                               [](unsigned char c) { return std::tolower(c); });
+
+                std::transform(formName.begin(), formName.end(), formName.begin(),
+                               [](unsigned char c) { return std::tolower(c); });
+
+                
+                SKSE::log::info("Processing item {} with tag {}", formName, itemName);
+
+                if (formName.find(itemName) != std::string::npos) {
+                    refrs.push_back(form);
+                }
+            }
+        }
+
+
+        return refrs; 
+    }
+
+    std::vector<std::string> GetGroupNames(StaticFunctionTag*, bool custom) {
+        return DealManager::GetSingleton().GetGroupNames(custom);
+    }
+
+    std::vector<RE::TESQuest*> GetGroupDeals(StaticFunctionTag*, std::string groupName) {
+        return DealManager::GetSingleton().GetGroupDeals(groupName);
+    }
 }
 
 bool DFF::RegisterDealManager(IVirtualMachine* vm) {
@@ -87,5 +135,11 @@ bool DFF::RegisterDealManager(IVirtualMachine* vm) {
 
     vm->RegisterFunction("GetDealCostGlobal", PapyrusClass, GetDealCostGlobal);
     vm->RegisterFunction("GetDealTimerGlobal", PapyrusClass, GetDealTimerGlobal);
+
+    vm->RegisterFunction("GetStageIndex", PapyrusClass, GetStageIndex);
+    vm->RegisterFunction("GetInventoryNamedObjects", PapyrusClass, GetInventoryNamedObjects);
+
+    vm->RegisterFunction("GetGroupNames", PapyrusClass, GetGroupNames);
+    vm->RegisterFunction("GetGroupDeals", PapyrusClass, GetGroupDeals);
     return true;
 }

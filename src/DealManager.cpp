@@ -211,6 +211,7 @@ void DealManager::InitQuests() {
         if (deals[key].InitQuest()) {
             RE::FormID formId = deals[key].GetQuest()->GetFormID();
             formMap[formId] = &deals[key];
+            log::info("Mapping {} -> {}", formId, deals[key].GetName());
         } else {
             log::info("Could not initialize quest data for {} - unregistering", key);
             toRemove.push_back(key);
@@ -503,6 +504,8 @@ void DealManager::RemoveDeal(RE::TESQuest* quest) {
 
 int DealManager::GetStage(int id) { return deals[id_name_map[id]].GetStage(); }
 
+int DealManager::GetStageIndex(RE::TESQuest* q) { return formMap[q->GetFormID()]->GetStageIndex(); }
+
 RE::TESQuest* DealManager::GetDealQuest(int id) { 
     return deals[id_name_map[id]].GetQuest(); 
 }
@@ -557,8 +560,13 @@ std::vector<RE::TESQuest*> DealManager::GetActiveDeals(bool classic, bool builtI
     if (classic) {
         for (std::string dealId : activeDeals) {
             if (!deals[dealId].IsModular() && deals[dealId].IsBuiltIn() == builtIn) {
-                quests.push_back(deals[dealId].GetQuest());
+                RE::TESQuest* q = deals[dealId].GetQuest();
+                quests.push_back(q);
                 log::info("Added deal {}", deals[dealId].GetName());
+
+                bool isNull = formMap[q->GetFormID()] == nullptr;
+
+                log::info("Deal is null {}", isNull);
             }
         }
         
@@ -574,11 +582,29 @@ std::vector<RE::TESQuest*> DealManager::GetActiveDeals(bool classic, bool builtI
 
     return quests;
 }
-std::string DealManager::GetDealName(RE::TESQuest* quest) { return formMap[quest->GetFormID()]->GetName(); }
+std::string DealManager::GetDealName(RE::TESQuest* quest) {
+    if (quest == nullptr) {
+        return "";
+    }
+
+    log::info("Getting deal name {} {}", quest->GetFormEditorID(), quest->GetFormID());
+    Deal* deal = formMap[quest->GetFormID()];
+
+    bool isNull = formMap[quest->GetFormID()] == nullptr;
+
+    log::info("Name deal is null {}", isNull);
+    
+    if (deal != nullptr)
+        return deal->GetName();
+    else
+        return "";
+}
 
 std::vector<std::string> DealManager::GetDealRules(RE::TESQuest* quest) { 
     std::vector<std::string> ruleNames;
     Deal* deal = formMap[quest->GetFormID()];
+    if (deal == nullptr) return ruleNames;
+
     if (deal->IsModular()) {
         for (Rule* rule : activeRules[deal]) ruleNames.push_back(rule->GetName());
     } else {
@@ -625,6 +651,27 @@ int DealManager::GetDealNextQuestStage(int id) {
 RE::TESGlobal* DealManager::GetDealCostGlobal(RE::TESQuest* q) { return formMap[q->GetFormID()]->GetCostGlobal(); }
 
 RE::TESGlobal* DealManager::GetDealTimerGlobal(RE::TESQuest* q) { return formMap[q->GetFormID()]->GetTimerGlobal(); }
+
+
+std::vector<std::string> DealManager::GetGroupNames(bool custom) { 
+    std::vector<std::string> groupNames; 
+
+    for (auto& [name, deals] : dealGroups) {
+        if (name != "Devious Followers Continued") {
+            groupNames.push_back(name);
+        }
+    }
+
+    return groupNames;
+}
+std::vector<RE::TESQuest*> DealManager::GetGroupDeals(std::string groupName) { 
+    std::vector<RE::TESQuest*> dealQuests;
+    for (auto& dealName : dealGroups[groupName]) {
+        dealQuests.push_back(deals[dealName].GetQuest());
+    }
+
+    return dealQuests;
+}
 
 void DealManager::OnRevert(SerializationInterface*) {
     std::unique_lock lock(GetSingleton()._lock);
@@ -770,8 +817,6 @@ void DealManager::OnGameLoaded(SerializationInterface* serde) {
                 int id;
                 serde->ReadRecordData(&id, sizeof(id));
 
-                log::info("Loaded deal mapping {} -> {}", id, name);
-
                 GetSingleton().id_name_map[id] = name;
                 GetSingleton().name_id_map[name] = id;
             }
@@ -807,16 +852,12 @@ void DealManager::OnGameLoaded(SerializationInterface* serde) {
             }
 
             serde->ReadRecordData(&dealSize, sizeof(dealSize));
-            log::info("Loading {} deals", dealSize);
             for (; dealSize > 0; --dealSize) {
                 std::string id = ReadString(serde);
 
                 Deal& deal = GetSingleton().deals[id];
-                log::info("Loading deal {}", deal.GetFullName());
-
                 std::size_t numStages;
                 serde->ReadRecordData(&numStages, sizeof(numStages));
-                log::info("Loading {} stages", numStages);
                 int i = 0;
                 for (; numStages > 0; --numStages) {
 
@@ -824,20 +865,16 @@ void DealManager::OnGameLoaded(SerializationInterface* serde) {
                     serde->ReadRecordData(&enabled, sizeof(enabled));
 
                     deal.GetStages()[i].SetEnabled(enabled);
-                    log::info("Loaded stage {} is {}", deal.GetStages()[i].GetName(), deal.GetStages()[i].IsEnabled());
                     std::size_t numAltStages;
                     serde->ReadRecordData(&numAltStages, sizeof(numAltStages));
 
                     numStages -= numAltStages; // prevent out of bounds
 
-                    log::info("Loading {} alt stages", numAltStages);
                     int j = 0;
                     for (; numAltStages > 0; --numAltStages) {
                         serde->ReadRecordData(&enabled, sizeof(enabled));
                         
                         deal.GetStages()[i].GetAltStages()[j].SetEnabled(enabled);
-                        log::info("Loaded alt stage {} is {}", deal.GetStages()[i].GetAltStages()[j].GetName(),
-                                  deal.GetStages()[i].GetAltStages()[j].IsEnabled());
                         j++;
                     }
 
