@@ -113,6 +113,8 @@ namespace DFF {
         std::vector<std::string> GetGroupNames(bool custom);
         std::vector<RE::TESQuest*> GetGroupDeals(std::string groupName);
 
+        RE::TESQuest* SelectRandomActiveDeal();
+
         /**
          * The serialization handler for reverting game state.
          *

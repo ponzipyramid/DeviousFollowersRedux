@@ -112,6 +112,10 @@ namespace {
     std::vector<RE::TESQuest*> GetGroupDeals(StaticFunctionTag*, std::string groupName) {
         return DealManager::GetSingleton().GetGroupDeals(groupName);
     }
+
+    RE::TESQuest* SelectRandomActiveDeal(StaticFunctionTag*) {
+        return DealManager::GetSingleton().SelectRandomActiveDeal();
+    }
 }
 
 bool DFF::RegisterDealManager(IVirtualMachine* vm) {

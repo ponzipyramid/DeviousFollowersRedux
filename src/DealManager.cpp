@@ -673,6 +673,20 @@ std::vector<RE::TESQuest*> DealManager::GetGroupDeals(std::string groupName) {
     return dealQuests;
 }
 
+RE::TESQuest* DealManager::SelectRandomActiveDeal() {
+    int numActive = activeDeals.size();
+
+    int rand = PickRandom(numActive);
+    std::vector<Deal*> activeDealList(numActive);
+
+
+    for (const auto& activeDeal : activeDeals) {
+        activeDealList.push_back(&deals[activeDeal]);
+    }
+
+    return activeDealList[rand]->GetQuest();
+}
+
 void DealManager::OnRevert(SerializationInterface*) {
     std::unique_lock lock(GetSingleton()._lock);
     GetSingleton().id_name_map.clear();
