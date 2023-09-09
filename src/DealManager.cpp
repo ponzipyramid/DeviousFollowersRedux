@@ -240,6 +240,8 @@ void DealManager::InitQuestData() {
 
 int DealManager::SelectDeal(int track, int maxModDeals, float bias, int lastRejectedId) {
 
+    return 0;
+
     Deal* chosen = nullptr;
     std::string name;
     std::string forcedDealName = Config::GetSingleton().GetForcedDealName();
@@ -258,7 +260,7 @@ int DealManager::SelectDeal(int track, int maxModDeals, float bias, int lastReje
 
     }
     if (chosen == nullptr) {
-        RegeneratePotentialDeals(true, lastRejectedId);
+        RegeneratePotentialDeals(maxModDeals, lastRejectedId);
 
         std::vector<std::string> candidateDeals;
         if (candidateClassicDeals.empty()) {
@@ -677,12 +679,13 @@ RE::TESQuest* DealManager::SelectRandomActiveDeal() {
     int numActive = activeDeals.size();
 
     int rand = PickRandom(numActive);
-    std::vector<Deal*> activeDealList(numActive);
-
+    std::vector<Deal*> activeDealList;
+    activeDealList.reserve(numActive);
 
     for (const auto& activeDeal : activeDeals) {
         activeDealList.push_back(&deals[activeDeal]);
     }
+
 
     return activeDealList[rand]->GetQuest();
 }

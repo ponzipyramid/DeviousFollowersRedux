@@ -145,5 +145,8 @@ bool DFF::RegisterDealManager(IVirtualMachine* vm) {
 
     vm->RegisterFunction("GetGroupNames", PapyrusClass, GetGroupNames);
     vm->RegisterFunction("GetGroupDeals", PapyrusClass, GetGroupDeals);
+
+
+    vm->RegisterFunction("SelectRandomActiveDeal", PapyrusClass, SelectRandomActiveDeal);
     return true;
 }
