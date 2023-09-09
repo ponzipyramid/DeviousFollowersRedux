@@ -402,8 +402,8 @@ void DealManager::RegeneratePotentialDeals(int maxModDeals, int lastRejectedId) 
     std::vector<std::string> validatedClassic;
     std::vector<std::string> validatedModular;
 
-    Rule* lastRejectedRule;
-    Deal* lastRejectedDeal;
+    Rule* lastRejectedRule = nullptr;
+    Deal* lastRejectedDeal = nullptr;
 
     if (lastRejectedId > 100 && lastRejectedId < 1000) {
         lastRejectedRule = GetRuleById(lastRejectedId);
