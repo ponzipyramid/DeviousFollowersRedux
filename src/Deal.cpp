@@ -70,11 +70,6 @@ bool Deal::ConflictsWith(Deal* other) {
     if (excludeDeals.count(other->name)) {
         return true;
     }
-    for (int i = 0; i < other->rules.size(); i++) {
-        if (ConflictsWith(&other->rules[i])) {
-            return true;
-        }
-    }
 
     return false;
 }
@@ -84,11 +79,6 @@ bool Deal::ConflictsWith(Rule* other) {
         return true;
     }
 
-    for (int i = 0; i < rules.size(); i++) {
-        if (rules[i].ConflictsWith(other)) {
-            return true;
-        }
-    }
     return false;
 }
 
