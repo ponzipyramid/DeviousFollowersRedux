@@ -3,6 +3,7 @@
 #include <SKSE/SKSE.h>
 #include <functional>
 #include <algorithm>
+#include "Script.hpp"
 
 using namespace DFF;
 
@@ -133,7 +134,8 @@ bool Rule::ConflictsWith(Rule* other) {
     return !RulesCompatible(this, other); 
 }
 
-void Deal::NextStage() { 
+void Deal::NextStage() {
+    int maxStage = GetMaxStage();
     stageIndex < std::max(maxStage, (int)stages.size()) - 1 ? ++stageIndex : stageIndex;
 }
 
@@ -147,9 +149,31 @@ void Deal::Reset() {
     stageIndex = -1;
 }
 
-bool Deal::HasNextStage() { return stageIndex < std::max(maxStage, (int) stages.size()) - 1; }
+int Deal::GetMaxStage() {
+    if (IsModular()) {
+        auto quest = RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESQuest>(0x1BD274, "DeviousFollowers.esp");
+        auto ptr = ScriptUtils::GetScriptObject(quest, "_DFlowModDealController");
+        auto val = ScriptUtils::GetProperty<int>(ptr, "MaxModDealsSetting");
+        return val;
+    } else {
+        auto ptr = ScriptUtils::GetScriptObject(quest, "_ddeal");
+        auto val = ScriptUtils::GetProperty<int>(ptr, "MaxStages");
+        return val;
+    }
+}
+
+bool Deal::HasNextStage() {
+    int maxStage = GetMaxStage();
+    bool hasNext = stageIndex < (std::min(maxStage, (int)stages.size()) - 1);
+    
+    SKSE::log::info("Deal {} has next stage = {}", name, hasNext);
+
+    return hasNext;
+}
 
 void Deal::SetMaxStage(int max) { 
+    int maxStage = GetMaxStage();
+
     SKSE::log::info("Setting max stage for {} to {}", fullName, max);
     maxStage = max; 
 }

@@ -240,8 +240,6 @@ void DealManager::InitQuestData() {
 
 int DealManager::SelectDeal(int track, int maxModDeals, float bias, int lastRejectedId) {
 
-    return 0;
-
     Deal* chosen = nullptr;
     std::string name;
     std::string forcedDealName = Config::GetSingleton().GetForcedDealName();
@@ -564,22 +562,14 @@ std::vector<RE::TESQuest*> DealManager::GetActiveDeals(bool classic, bool builtI
             if (!deals[dealId].IsModular() && deals[dealId].IsBuiltIn() == builtIn) {
                 RE::TESQuest* q = deals[dealId].GetQuest();
                 quests.push_back(q);
-                log::info("Added deal {}", deals[dealId].GetName());
-
-                bool isNull = formMap[q->GetFormID()] == nullptr;
-
-                log::info("Deal is null {}", isNull);
             }
         }
-        
     } else {
         for (std::string dealId : activeDeals) {
             if (deals[dealId].IsModular()) {
                 quests.push_back(deals[dealId].GetQuest());
-                log::info("Added deal {}", dealId);
             }
         }
-        
     }
 
     return quests;
@@ -589,12 +579,9 @@ std::string DealManager::GetDealName(RE::TESQuest* quest) {
         return "";
     }
 
-    log::info("Getting deal name {} {}", quest->GetFormEditorID(), quest->GetFormID());
     Deal* deal = formMap[quest->GetFormID()];
 
     bool isNull = formMap[quest->GetFormID()] == nullptr;
-
-    log::info("Name deal is null {}", isNull);
     
     if (deal != nullptr)
         return deal->GetName();
@@ -655,21 +642,35 @@ RE::TESGlobal* DealManager::GetDealCostGlobal(RE::TESQuest* q) { return formMap[
 RE::TESGlobal* DealManager::GetDealTimerGlobal(RE::TESQuest* q) { return formMap[q->GetFormID()]->GetTimerGlobal(); }
 
 
-std::vector<std::string> DealManager::GetGroupNames(bool custom) { 
+std::vector<std::string> DealManager::GetGroupNames() { 
     std::vector<std::string> groupNames; 
 
     for (auto& [name, deals] : dealGroups) {
-        if (name != "Devious Followers Continued") {
-            groupNames.push_back(name);
-        }
+        groupNames.push_back(name);
     }
 
     return groupNames;
 }
-std::vector<RE::TESQuest*> DealManager::GetGroupDeals(std::string groupName) { 
+std::vector<RE::TESQuest*> DealManager::GetGroupDeals(std::string groupName, int filter) { 
     std::vector<RE::TESQuest*> dealQuests;
+
+    bool includeModular = false;
+    bool includeClassic = false;
+
+    if (filter == 0) {
+        includeModular = true;
+        includeClassic = true;
+    } else if (filter == 1) {
+        includeClassic = true;
+    } else {
+        includeModular = true;
+    }
+
     for (auto& dealName : dealGroups[groupName]) {
-        dealQuests.push_back(deals[dealName].GetQuest());
+        Deal* deal = &deals[dealName];
+
+        if ((includeModular && deal->IsModular()) || (includeClassic && !deal->IsModular()))
+            dealQuests.push_back(deals[dealName].GetQuest());
     }
 
     return dealQuests;
@@ -686,8 +687,12 @@ RE::TESQuest* DealManager::SelectRandomActiveDeal() {
         activeDealList.push_back(&deals[activeDeal]);
     }
 
-
     return activeDealList[rand]->GetQuest();
+}
+
+int DealManager::GetDealNumStages(RE::TESQuest* q) { 
+    Deal* deal = formMap[q->GetFormID()]; 
+    return deal->GetNumStages();
 }
 
 void DealManager::OnRevert(SerializationInterface*) {
@@ -746,73 +751,6 @@ void DealManager::OnGameSaved(SerializationInterface* serde) {
 
         serde->WriteRecordData(&maxStage, sizeof(maxStage));
     }
-
-    // save active rules for each modular deal
-    auto ruleSize = GetSingleton().activeRules.size();
-    serde->WriteRecordData(&ruleSize, sizeof(ruleSize));
-    for (auto& [deal, rules] : GetSingleton().activeRules) {
-        WriteString(serde, deal->GetFullName());
-        auto ruleCount = rules.size();
-        serde->WriteRecordData(&ruleCount, sizeof(ruleCount));
-        for (Rule* rule : rules) {
-            WriteString(serde, rule->GetFullName());
-        }
-    }
-
-    // save max stage for each classic deal
-    auto dealSize = GetSingleton().deals.size();
-    serde->WriteRecordData(&dealSize, sizeof(dealSize));
-    for (auto& [id, deal] : GetSingleton().deals) {
-        WriteString(serde, deal.GetFullName());
-        auto maxStage = deal.GetMaxStage();
-        serde->WriteRecordData(&maxStage, sizeof(maxStage));
-    }
-
-    // save toggled rules
-    ruleSize = GetSingleton().rules.size();
-    serde->WriteRecordData(&ruleSize, sizeof(ruleSize));
-    for (auto& [id, rule] : GetSingleton().rules) {
-        WriteString(serde, rule.GetFullName());
-        auto enabled = rule.IsEnabled();
-        serde->WriteRecordData(&enabled, sizeof(enabled));
-    }
-
-    // save toggled stage variations for classic deals
-    dealSize = GetSingleton().deals.size() - GetSingleton().modularDeals.size();
-    serde->WriteRecordData(&dealSize, sizeof(dealSize));
-
-    log::info("Saving {} deals", dealSize);
-    for (auto& [id, deal] : GetSingleton().deals) {
-        if (deal.IsModular()) continue;
-
-        WriteString(serde, deal.GetFullName());
-        log::info("Saving deal {}", deal.GetFullName());
-        std::size_t numStages = 0;
-        std::vector<Stage> stages = deal.GetStages();
-        numStages += stages.size();
-        for (Stage& stage : stages) {
-            numStages += stage.GetAltStages().size();
-        }
-        serde->WriteRecordData(&numStages, sizeof(numStages));
-        log::info("Saving {} stages", numStages);
-        for (Stage& stage : deal.GetStages()) {
-            auto enabled = stage.IsEnabled();
-            serde->WriteRecordData(&enabled, sizeof(enabled));
-
-            log::info("Saving {} is {} ", stage.GetName(), enabled);
-
-            auto numAltStages = stage.GetAltStages().size();
-            serde->WriteRecordData(&numAltStages, sizeof(numAltStages));
-
-            log::info("Saving {} alt stages", numAltStages);
-            for (Stage& altStage : stage.GetAltStages()) {
-                enabled = altStage.IsEnabled();
-                serde->WriteRecordData(&enabled, sizeof(enabled));
-
-                log::info("Saving {} is {} ", altStage.GetName(), enabled);
-            }
-        }
-    }
 }
 
 void DealManager::OnGameLoaded(SerializationInterface* serde) {
@@ -836,67 +774,6 @@ void DealManager::OnGameLoaded(SerializationInterface* serde) {
 
                 GetSingleton().id_name_map[id] = name;
                 GetSingleton().name_id_map[name] = id;
-            }
-
-            std::size_t ruleSize;
-            serde->ReadRecordData(&ruleSize, sizeof(ruleSize));
-            for (; ruleSize > 0; --ruleSize) {
-                std::string id = ReadString(serde);
-                Deal& deal = GetSingleton().deals[id];
-                std::size_t ruleCount;
-                serde->ReadRecordData(&ruleCount, sizeof(ruleCount));
-                for (; ruleCount > 0; --ruleCount) {
-                    std::string ruleId = ReadString(serde);
-                    GetSingleton().activeRules[&GetSingleton().deals[id]].push_back(&GetSingleton().rules[ruleId]);
-                }
-            }
-
-            std::size_t dealSize;
-            serde->ReadRecordData(&dealSize, sizeof(dealSize));
-            for (; dealSize > 0; --dealSize) {
-                std::string id = ReadString(serde);
-                int maxStage;
-                serde->ReadRecordData(&maxStage, sizeof(maxStage));
-                GetSingleton().deals[id].SetMaxStage(maxStage);
-            }
-
-            serde->ReadRecordData(&ruleSize, sizeof(ruleSize));
-            for (; ruleSize > 0; --ruleSize) {
-                std::string id = ReadString(serde);
-                bool enabled;
-                serde->ReadRecordData(&enabled, sizeof(enabled));
-                GetSingleton().rules[id].SetEnabled(enabled);
-            }
-
-            serde->ReadRecordData(&dealSize, sizeof(dealSize));
-            for (; dealSize > 0; --dealSize) {
-                std::string id = ReadString(serde);
-
-                Deal& deal = GetSingleton().deals[id];
-                std::size_t numStages;
-                serde->ReadRecordData(&numStages, sizeof(numStages));
-                int i = 0;
-                for (; numStages > 0; --numStages) {
-
-                    bool enabled;
-                    serde->ReadRecordData(&enabled, sizeof(enabled));
-
-                    deal.GetStages()[i].SetEnabled(enabled);
-                    std::size_t numAltStages;
-                    serde->ReadRecordData(&numAltStages, sizeof(numAltStages));
-
-                    numStages -= numAltStages; // prevent out of bounds
-
-                    int j = 0;
-                    for (; numAltStages > 0; --numAltStages) {
-                        serde->ReadRecordData(&enabled, sizeof(enabled));
-                        
-                        deal.GetStages()[i].GetAltStages()[j].SetEnabled(enabled);
-                        j++;
-                    }
-
-                    i++;
-                }
             }
         }
     }

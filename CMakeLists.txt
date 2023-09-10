@@ -24,6 +24,7 @@ set(headers
         include/DFF/DFF.h
         include/DFF/Deal.h
         include/DFF/DealManager.h
+        include/Script.hpp
     )
 
 set(sources

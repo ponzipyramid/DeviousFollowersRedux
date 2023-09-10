@@ -105,17 +105,22 @@ namespace {
         return refrs; 
     }
 
-    std::vector<std::string> GetGroupNames(StaticFunctionTag*, bool custom) {
-        return DealManager::GetSingleton().GetGroupNames(custom);
+    std::vector<std::string> GetGroupNames(StaticFunctionTag*) {
+        return DealManager::GetSingleton().GetGroupNames();
     }
 
-    std::vector<RE::TESQuest*> GetGroupDeals(StaticFunctionTag*, std::string groupName) {
-        return DealManager::GetSingleton().GetGroupDeals(groupName);
+    std::vector<RE::TESQuest*> GetGroupDeals(StaticFunctionTag*, std::string groupName, int filter) {
+        return DealManager::GetSingleton().GetGroupDeals(groupName, filter);
     }
 
     RE::TESQuest* SelectRandomActiveDeal(StaticFunctionTag*) {
         return DealManager::GetSingleton().SelectRandomActiveDeal();
     }
+
+    int GetDealNumStages(StaticFunctionTag*, RE::TESQuest* q) { 
+        return DealManager::GetSingleton().GetDealNumStages(q);
+    }
+
 }
 
 bool DFF::RegisterDealManager(IVirtualMachine* vm) {
@@ -148,5 +153,6 @@ bool DFF::RegisterDealManager(IVirtualMachine* vm) {
 
 
     vm->RegisterFunction("SelectRandomActiveDeal", PapyrusClass, SelectRandomActiveDeal);
+    vm->RegisterFunction("GetDealNumStages", PapyrusClass, GetDealNumStages);
     return true;
 }

@@ -131,8 +131,9 @@ namespace DFF {
         [[nodiscard]] inline std::string GetFullName() { return fullName; }
         [[nodiscard]] inline std::string GetName() { return name; }
         [[nodiscard]] inline bool IsModular() { return modular; }
-        [[nodiscard]] inline int GetMaxStage() { return maxStage; }
-        [[nodiscard]] inline bool IsMaxStageDifferent() { return maxStage != stages.size(); }
+        int GetMaxStage();
+        [[nodiscard]] inline int GetNumStages() { return stages.size(); }
+        [[nodiscard]] inline bool IsMaxStageDifferent() { return GetMaxStage() != stages.size(); }
         [[nodiscard]] inline std::vector<Stage>& GetStages() { return stages; }
 
         [[nodiscard]] inline RE::TESGlobal* GetCostGlobal() const { return costGlobal; }
@@ -194,8 +195,6 @@ namespace DFF {
                     }
                 }
             }
-
-            maxStage = stages.size();
         }
 
         std::string fullName;
@@ -208,7 +207,6 @@ namespace DFF {
         int formId;
         int builtInId = -1;
         int stageIndex = -1;
-        int maxStage = 0;
 
         std::vector<Stage> stages;
         std::vector<Rule> rules;

@@ -110,10 +110,12 @@ namespace DFF {
         RE::TESGlobal* GetDealCostGlobal(RE::TESQuest* q);
         RE::TESGlobal* GetDealTimerGlobal(RE::TESQuest* q);
 
-        std::vector<std::string> GetGroupNames(bool custom);
-        std::vector<RE::TESQuest*> GetGroupDeals(std::string groupName);
+        std::vector<std::string> GetGroupNames();
+        std::vector<RE::TESQuest*> GetGroupDeals(std::string groupName, int filter);
 
         RE::TESQuest* SelectRandomActiveDeal();
+
+        int GetDealNumStages(RE::TESQuest* q);
 
         /**
          * The serialization handler for reverting game state.
