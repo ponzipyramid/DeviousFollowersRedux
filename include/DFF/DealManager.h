@@ -42,6 +42,7 @@ namespace DFF {
          * @param The id of the deal that has been selected. This should be the deal chosen by SelectDeal in most cases.\
          */
         void ActivateDeal(int id);
+        void ActivateDeal(RE::TESQuest* q);
 
         /**
          * Inform DFF that a deal has been removed.
@@ -116,6 +117,10 @@ namespace DFF {
         RE::TESQuest* SelectRandomActiveDeal();
 
         int GetDealNumStages(RE::TESQuest* q);
+
+        std::vector<std::string> GetDealFinalStages(RE::TESQuest* q);
+
+        std::vector<int> GetDealFinalStageIndexes(RE::TESQuest* q);
 
         /**
          * The serialization handler for reverting game state.

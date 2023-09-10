@@ -17,6 +17,10 @@ namespace {
 
     void ActivateDeal(StaticFunctionTag*, int32_t id) { DealManager::GetSingleton().ActivateDeal(id); }
     
+    void ActivateDealByQuest(StaticFunctionTag*, RE::TESQuest* quest) {
+        DealManager::GetSingleton().ActivateDeal(quest);
+    }
+    
     void RemoveDeal(StaticFunctionTag*, RE::TESQuest* quest) { DealManager::GetSingleton().RemoveDeal(quest); }
     
     TESQuest* GetDealQuest(StaticFunctionTag*, int32_t id) { return DealManager::GetSingleton().GetDealQuest(id); }
@@ -121,11 +125,19 @@ namespace {
         return DealManager::GetSingleton().GetDealNumStages(q);
     }
 
+    std::vector<std::string> GetDealFinalStages(StaticFunctionTag*, RE::TESQuest* q) {
+        return DealManager::GetSingleton().GetDealFinalStages(q);
+    }
+
+    std::vector<int> GetDealFinalStageIndexes(StaticFunctionTag*, RE::TESQuest* q) {
+        return DealManager::GetSingleton().GetDealFinalStageIndexes(q);
+    }
 }
 
 bool DFF::RegisterDealManager(IVirtualMachine* vm) {
     vm->RegisterFunction("SelectDeal", PapyrusClass, SelectDeal);
     vm->RegisterFunction("ActivateDeal", PapyrusClass, ActivateDeal);
+    vm->RegisterFunction("ActivateDealByQuest", PapyrusClass, ActivateDealByQuest);
     vm->RegisterFunction("RemoveDeal", PapyrusClass, RemoveDeal);
     vm->RegisterFunction("GetDealQuest", PapyrusClass, GetDealQuest);
     vm->RegisterFunction("GetStage", PapyrusClass, GetStage);
@@ -153,6 +165,9 @@ bool DFF::RegisterDealManager(IVirtualMachine* vm) {
 
 
     vm->RegisterFunction("SelectRandomActiveDeal", PapyrusClass, SelectRandomActiveDeal);
+    
     vm->RegisterFunction("GetDealNumStages", PapyrusClass, GetDealNumStages);
+    vm->RegisterFunction("GetDealFinalStages", PapyrusClass, GetDealFinalStages);
+    vm->RegisterFunction("GetDealFinalStageIndexes", PapyrusClass, GetDealFinalStageIndexes);
     return true;
 }

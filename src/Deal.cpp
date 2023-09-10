@@ -130,6 +130,23 @@ bool Rule::RulesCompatible(Rule* r1, Rule* r2) {
     return false;
 }
 
+bool Rule::IsEnabled() { 
+    auto quest = RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESQuest>(0x1BD274, "DeviousFollowers.esp");
+
+    SKSE::log::info("Found Mod Deal Settings {}", quest != nullptr);
+
+    auto ptr = ScriptUtils::GetScriptObject(quest, "_DFlowModDealController");
+
+    SKSE::log::info("Found Mod Deal Script Ptr {}, fetching property {}", ptr != nullptr, statusProperty);
+
+    auto val = ScriptUtils::GetProperty<int>(ptr, statusProperty);
+
+    SKSE::log::info("{} rule status is {}", name, val);
+
+    return val != 0;
+}
+
+
 bool Rule::ConflictsWith(Rule* other) {
     return !RulesCompatible(this, other); 
 }
@@ -151,15 +168,16 @@ void Deal::Reset() {
 
 int Deal::GetMaxStage() {
     if (IsModular()) {
-        auto quest = RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESQuest>(0x1BD274, "DeviousFollowers.esp");
-        auto ptr = ScriptUtils::GetScriptObject(quest, "_DFlowModDealController");
-        auto val = ScriptUtils::GetProperty<int>(ptr, "MaxModDealsSetting");
-        return val;
+        return 3;
     } else {
-        auto ptr = ScriptUtils::GetScriptObject(quest, "_ddeal");
-        auto val = ScriptUtils::GetProperty<int>(ptr, "MaxStages");
-        return val;
+        return GetProperty<int>("MaxStages");
     }
+}
+
+template <typename T>
+T Deal::GetProperty(std::string name) {
+    auto ptr = ScriptUtils::GetScriptObject(quest, "_ddeal");
+    return ScriptUtils::GetProperty<T>(ptr, name);
 }
 
 bool Deal::HasNextStage() {
@@ -191,23 +209,39 @@ Rule::Rule(std::string group, std::string name) {
 }
 
 int Deal::GetNextStage() {
-    stages[stageIndex + 1].RandomizeAltIndex();
+
+    if (!IsModular()) {
+        try {
+            SKSE::log::info("Randomizing alt stage for {}", name);
+            auto enabledAlts = GetProperty<std::vector<bool>>("FinalStagesEnabled"); 
+            stages[stageIndex + 1].RandomizeAltIndex(enabledAlts);
+        } catch(...) {
+            SKSE::log::info("Could not retrieve script object for {}", name);
+        }
+    }
+
     return stages[stageIndex + 1].GetQuestStageIndex(); 
 }
 
-void Stage::RandomizeAltIndex() {
+void Stage::RandomizeAltIndex(std::vector<bool> enabled) {
     // run thru deals and if disabled don't add them to list
-    std::vector<int> indices;
-    if (enabled) indices.push_back(-1);
 
-    for (int i = 0; i < alt.size(); i++)
-        if (alt[i].enabled) indices.push_back(i);
+    if (alt.empty()) return;
+
+    std::vector<int> indices;
+    if (enabled[0]) {
+        indices.push_back(-1);
+    }
+
+    for (int i = 0; i < alt.size(); i++) {
+        if (enabled[i + 1]) indices.push_back(i);
+    }
 
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> distr(0, indices.size() - 1);
     altIndex = indices[distr(gen)];
-    SKSE::log::info("Selected alt index {}", altIndex);
+    SKSE::log::info("Selected alt index {} out of {}", altIndex, indices.size());
 }
 
 int Stage::GetQuestStageIndex() { return altIndex < 0 ? index : alt[altIndex].GetQuestStageIndex(); }

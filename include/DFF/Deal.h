@@ -22,7 +22,7 @@ namespace DFF {
         [[nodiscard]] inline const int GetBuiltInId() { return builtInId; }
         [[nodiscard]] inline bool IsBuiltIn() { return builtInId >= 0; }
         [[nodiscard]] inline const bool IsRuleForLevel(int level) { return !!levels.count(level); }
-        [[nodiscard]] inline const bool IsEnabled() { return enabled; }
+        bool IsEnabled();
         inline void SetEnabled(bool enabled) { this->enabled = enabled; }
 
         bool ConflictsWith(Rule* other);
@@ -46,6 +46,8 @@ namespace DFF {
             ar <=> articuno::kv(description, "description");
             ar <=> articuno::kv(requirements, "requirements");
             ar <=> articuno::kv(_disabled, "disabled");
+            
+            ar <=> articuno::kv(statusProperty, "statusProperty");
 
 
             ar <=> articuno::kv(alt, "alt");
@@ -59,6 +61,18 @@ namespace DFF {
 
             for (std::string slot : _slots) slots.insert(std::stoi(slot));
             for (std::string level : _levels) levels.insert(std::stoi(level));
+
+            if (statusProperty.empty() && !name.empty()) {
+                statusProperty = std::string(name);
+                statusProperty.erase(std::remove_if(statusProperty.begin(), statusProperty.end(), ::isspace),
+                                     statusProperty.end());
+                statusProperty += "Rule";
+            }
+
+            if (!name.empty()) {
+                SKSE::log::info("Stauts Property for {} is {}", name, statusProperty);
+            }
+
         }
 
         std::string type;
@@ -70,6 +84,8 @@ namespace DFF {
 
         bool negate;
         bool enabled;
+
+        std::string statusProperty;
 
         std::unordered_set<int> slots;
         std::unordered_set<int> levels;
@@ -84,11 +100,12 @@ namespace DFF {
     public:
         [[nodiscard]] inline std::vector<Rule> GetRules() { return rules; }
         [[nodiscard]] inline std::string GetName() { return name; }
+        [[nodiscard]] inline int GetIndex() { return index; }
         [[nodiscard]] inline bool IsEnabled() { return enabled; }
         [[nodiscard]] inline std::vector<Stage>& GetAltStages() { return alt; }
         inline void SetEnabled(bool enabled) { this->enabled = enabled; }
 
-        void RandomizeAltIndex();
+        void RandomizeAltIndex(std::vector<bool> enabled);
         void Reset();
         int GetQuestStageIndex();
     private:
@@ -196,6 +213,9 @@ namespace DFF {
                 }
             }
         }
+
+        template<typename T>
+        T GetProperty(std::string name);
 
         std::string fullName;
         std::string name;

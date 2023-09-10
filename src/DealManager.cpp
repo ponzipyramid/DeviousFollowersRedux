@@ -211,7 +211,6 @@ void DealManager::InitQuests() {
         if (deals[key].InitQuest()) {
             RE::FormID formId = deals[key].GetQuest()->GetFormID();
             formMap[formId] = &deals[key];
-            log::info("Mapping {} -> {}", formId, deals[key].GetName());
         } else {
             log::info("Could not initialize quest data for {} - unregistering", key);
             toRemove.push_back(key);
@@ -284,27 +283,20 @@ int DealManager::SelectDeal(int track, int maxModDeals, float bias, int lastReje
     }
     
     int id;
-    if (chosen->IsBuiltIn()) {        
-        id_name_map.erase(chosen->GetBuiltInId() + chosen->GetStage());
-
+    if (chosen->IsModular()) {
         id = chosen->GetBuiltInId();
-
-        if (chosen->IsModular()) { 
-            std::vector<Rule*> leveledCandidates;
-            log::info("{} rules available", candidateRules.size());
-            for (Rule* rule : candidateRules) {
-                if (rule->IsRuleForLevel(chosen->GetNextStage())) {
-                    leveledCandidates.push_back(rule);
-                }
+        
+        std::vector<Rule*> leveledCandidates;
+        log::info("{} rules available", candidateRules.size());
+        for (Rule* rule : candidateRules) {
+            if (rule->IsRuleForLevel(chosen->GetNextStage())) {
+                leveledCandidates.push_back(rule);
             }
-            int index = PickRandom(leveledCandidates.size());
-            Rule* rule = leveledCandidates[index];
-            id += rule->GetBuiltInId();
-            return id;
-        } else {
-            id += chosen->GetNextStage();
         }
-
+        int index = PickRandom(leveledCandidates.size());
+        Rule* rule = leveledCandidates[index];
+        id += rule->GetBuiltInId();
+        return id;
     } else if (name_id_map.count(name)) {
         id = name_id_map[name];
     } else {
@@ -341,7 +333,7 @@ Deal* DealManager::GetDealById(int id, bool modular) {
         checkDeals = modularDeals;
     }
 
-    Deal* deal;
+    Deal* deal = nullptr;
 
     for (Deal* d : checkDeals) {
         if (d->GetBuiltInId() == n) {
@@ -356,6 +348,8 @@ Deal* DealManager::GetDealById(int id, bool modular) {
 
 void DealManager::ActivateDeal(int id) {
 
+    SKSE::log::info("ActivateDeal - Id START");
+
     int actualId = abs(id);
     if (!id_name_map.count(actualId)) {
         if (id < 0) {
@@ -366,6 +360,9 @@ void DealManager::ActivateDeal(int id) {
             Deal* deal = GetDealById(actualId, true);
             activeDeals.insert(deal->GetFullName());
             deal->NextStage();
+
+            SKSE::log::info("ActivateDeal END");
+
             return;
         } else {
             // classic deal
@@ -380,8 +377,20 @@ void DealManager::ActivateDeal(int id) {
     if (id_name_map[actualId] == selectedDeal) {
         selectedDeal = "";
     }
+    SKSE::log::info("ActivateDeal END");
 
     log::info("Activating {}", id_name_map[actualId]);
+}
+
+void DealManager::ActivateDeal(RE::TESQuest* q) {
+    Deal* deal = formMap[q->GetFormID()];
+    
+    SKSE::log::info("ActivateDeal - Quest START");
+
+    if (deal) {
+        activeDeals.insert(deal->GetFullName());
+        deals[deal->GetFullName()].NextStage();
+    }
 }
 
 Rule* DealManager::GetRuleById(int id) {
@@ -411,6 +420,7 @@ void DealManager::RegeneratePotentialDeals(int maxModDeals, int lastRejectedId) 
         lastRejectedDeal = GetDealById(lastRejectedId);
     }
 
+    // create list of rules
     candidateRules.clear();
     bool canAddRejected = false;
     for (auto& [key, rule] : rules) {
@@ -429,6 +439,7 @@ void DealManager::RegeneratePotentialDeals(int maxModDeals, int lastRejectedId) 
 
     int currActiveModularDeals = 0;
 
+    // get number of active deals
     for (std::string dealId : activeDeals) {
     
         if (deals[dealId].IsModular()) {
@@ -506,7 +517,7 @@ int DealManager::GetStage(int id) { return deals[id_name_map[id]].GetStage(); }
 
 int DealManager::GetStageIndex(RE::TESQuest* q) { return formMap[q->GetFormID()]->GetStageIndex(); }
 
-RE::TESQuest* DealManager::GetDealQuest(int id) { 
+RE::TESQuest* DealManager::GetDealQuest(int id) {
     return deals[id_name_map[id]].GetQuest(); 
 }
 
@@ -691,8 +702,44 @@ RE::TESQuest* DealManager::SelectRandomActiveDeal() {
 }
 
 int DealManager::GetDealNumStages(RE::TESQuest* q) { 
-    Deal* deal = formMap[q->GetFormID()]; 
+    Deal* deal = formMap[q->GetFormID()];
     return deal->GetNumStages();
+}
+
+std::vector<std::string> DealManager::GetDealFinalStages(RE::TESQuest* q) {
+    Deal* deal = formMap[q->GetFormID()];
+    auto stages = deal->GetStages();
+
+    auto lastStage = stages[stages.size() - 1];
+    auto altStages = lastStage.GetAltStages();
+
+    std::vector<std::string> stageIndices;
+    stageIndices.reserve(altStages.size() + 1);
+    stageIndices.push_back(lastStage.GetName());
+
+    for (auto& alt : altStages) {
+        stageIndices.push_back(alt.GetName());
+    }
+
+    return stageIndices;
+}
+
+std::vector<int> DealManager::GetDealFinalStageIndexes(RE::TESQuest* q) {
+    Deal* deal = formMap[q->GetFormID()];
+    auto stages = deal->GetStages();
+
+    auto lastStage = stages[stages.size() - 1];
+    auto altStages = lastStage.GetAltStages();
+
+    std::vector<int> stageIndices;
+    stageIndices.reserve(altStages.size() + 1);
+    stageIndices.push_back(lastStage.GetIndex());
+
+    for (auto& alt : altStages) {
+        stageIndices.push_back(alt.GetIndex());
+    }
+
+    return stageIndices;
 }
 
 void DealManager::OnRevert(SerializationInterface*) {
