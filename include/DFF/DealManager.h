@@ -35,7 +35,6 @@ namespace DFF {
 
         int SelectDeal(int track, int maxModDeals, float prefersModular, int lastRejectedId);
 
-
         /**
          * Inform DFF that a deal has been activated.
          *
@@ -99,7 +98,7 @@ namespace DFF {
 
         void LoadRuleMaxStage(RE::TESQuest*, int maxStage);
 
-        std::vector<RE::TESQuest*> GetActiveDeals(bool classic, bool builtIn);
+        std::vector<RE::TESQuest*> GetActiveDeals(int filter);
         std::string GetDealName(RE::TESQuest* quest);
         std::vector<std::string> GetDealRules(RE::TESQuest* quest);
 
@@ -121,6 +120,12 @@ namespace DFF {
         std::vector<std::string> GetDealFinalStages(RE::TESQuest* q);
 
         std::vector<int> GetDealFinalStageIndexes(RE::TESQuest* q);
+
+        void ShowBuyoutMenu();
+
+        [[nodiscard]] inline bool IsBuyoutSelected() { return menuChosen; }
+        
+        RE::TESQuest* GetBuyoutMenuResult();
 
         /**
          * The serialization handler for reverting game state.
@@ -178,6 +183,9 @@ namespace DFF {
         std::vector<Rule*> candidateRules;
 
         std::unordered_map<Conflictor*, std::unordered_set<Conflictor*>> conflicts;
+
+        bool menuChosen;
+        std::string chosenDeal;
     };
 #pragma warning(pop)
 }

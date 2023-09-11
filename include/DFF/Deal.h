@@ -75,6 +75,9 @@ namespace DFF {
 
         }
 
+        static bool InternalCheck(Rule* r1, Rule* r2);
+
+
         std::string type;
         std::string name;
         std::string fullName;

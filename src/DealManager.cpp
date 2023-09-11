@@ -8,6 +8,8 @@
 #include <sys/stat.h>
 #include <thread>
 #include <stdlib.h>
+#include "UI.h"
+#include <future>
 
 using namespace RE;
 using namespace DFF;
@@ -565,21 +567,15 @@ void DealManager::LoadRuleMaxStage(RE::TESQuest* quest, int maxStage) {
 }
 
 
-std::vector<RE::TESQuest*> DealManager::GetActiveDeals(bool classic, bool builtIn) { 
+std::vector<RE::TESQuest*> DealManager::GetActiveDeals(int filter) { 
     std::vector<RE::TESQuest*> quests;
 
-    if (classic) {
-        for (std::string dealId : activeDeals) {
-            if (!deals[dealId].IsModular() && deals[dealId].IsBuiltIn() == builtIn) {
-                RE::TESQuest* q = deals[dealId].GetQuest();
-                quests.push_back(q);
-            }
-        }
-    } else {
-        for (std::string dealId : activeDeals) {
-            if (deals[dealId].IsModular()) {
-                quests.push_back(deals[dealId].GetQuest());
-            }
+    for (std::string dealId : activeDeals) {
+        auto& deal = deals[dealId];
+
+        if ((filter == 0) || (filter == 1 && !deal.IsModular()) || (filter == 2 && deal.IsModular())) {
+            RE::TESQuest* q = deals[dealId].GetQuest();
+            quests.push_back(q);
         }
     }
 
@@ -740,6 +736,60 @@ std::vector<int> DealManager::GetDealFinalStageIndexes(RE::TESQuest* q) {
     }
 
     return stageIndices;
+}
+
+void DealManager::ShowBuyoutMenu() {
+    std::string msg = "Buyout: Select a Deal";
+    std::vector<std::string> options; 
+    std::vector<std::string> dealList;
+    for (auto deal : activeDeals) {
+        auto cost = deals[deal].GetCostGlobal();
+        dealList.push_back(deal);
+        options.push_back(std::format("{} [{}]", deals[deal].GetName(), cost->value));
+    }
+
+    options.push_back("Cancel");
+
+    SKSE::log::info("Showing message box");
+
+
+    menuChosen = false;
+
+    TESMessageBox::Show(msg, options, [dealList](int result) {
+        SKSE::log::info("Selected {}", result);
+        std::string val;
+
+        if (result < dealList.size())
+            val = dealList[result];
+        else
+            SKSE::log::info("User cancelled buyout");
+
+        DealManager::GetSingleton().chosenDeal = val;
+        DealManager::GetSingleton().menuChosen = true;
+
+        SKSE::log::info("Set chosen deal to {} and menuChosen to {}", DealManager::GetSingleton().chosenDeal,
+                        DealManager::GetSingleton().menuChosen);
+
+    });
+}
+
+RE::TESQuest* DealManager::GetBuyoutMenuResult() {
+    SKSE::log::info("Fetching chosen deal to {} and menuChosen to {}", DealManager::GetSingleton().chosenDeal,
+                    DealManager::GetSingleton().menuChosen);
+
+    DealManager::GetSingleton().menuChosen = false;
+
+    if (chosenDeal.empty()) {
+        SKSE::log::info("No chosen deal");
+        return nullptr;
+    } else {
+        auto deal = &deals[chosenDeal];
+        if (deal) {
+            return deal->GetQuest();
+        } else {
+            return nullptr;
+        } 
+    }
 }
 
 void DealManager::OnRevert(SerializationInterface*) {

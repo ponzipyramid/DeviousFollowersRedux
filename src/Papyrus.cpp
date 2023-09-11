@@ -41,8 +41,8 @@ namespace {
         DealManager::GetSingleton().LoadRuleMaxStage(quest, max);
     }
 
-    std::vector<RE::TESQuest*> GetActiveDeals(StaticFunctionTag*, bool classic, bool builtIn) {
-        return DealManager::GetSingleton().GetActiveDeals(classic, builtIn);
+    std::vector<RE::TESQuest*> GetActiveDeals(StaticFunctionTag*, int filter) {
+        return DealManager::GetSingleton().GetActiveDeals(filter);
     }
     std::string GetDealName(StaticFunctionTag*, RE::TESQuest* quest) {
         return DealManager::GetSingleton().GetDealName(quest);
@@ -132,6 +132,16 @@ namespace {
     std::vector<int> GetDealFinalStageIndexes(StaticFunctionTag*, RE::TESQuest* q) {
         return DealManager::GetSingleton().GetDealFinalStageIndexes(q);
     }
+
+    void ShowBuyoutMenuInternal(StaticFunctionTag*) { 
+        DealManager::GetSingleton().ShowBuyoutMenu();
+    }
+
+    bool IsBuyoutSelected(StaticFunctionTag*) { 
+        return DealManager::GetSingleton().IsBuyoutSelected();
+    }
+
+    RE::TESQuest* GetBuyoutMenuResult(StaticFunctionTag*) { return DealManager::GetSingleton().GetBuyoutMenuResult(); }
 }
 
 bool DFF::RegisterDealManager(IVirtualMachine* vm) {
@@ -168,6 +178,12 @@ bool DFF::RegisterDealManager(IVirtualMachine* vm) {
     
     vm->RegisterFunction("GetDealNumStages", PapyrusClass, GetDealNumStages);
     vm->RegisterFunction("GetDealFinalStages", PapyrusClass, GetDealFinalStages);
+    
     vm->RegisterFunction("GetDealFinalStageIndexes", PapyrusClass, GetDealFinalStageIndexes);
+    
+    vm->RegisterFunction("IsBuyoutSelected", PapyrusClass, IsBuyoutSelected);
+    vm->RegisterFunction("ShowBuyoutMenuInternal", PapyrusClass, ShowBuyoutMenuInternal);
+    vm->RegisterFunction("GetBuyoutMenuResult", PapyrusClass, GetBuyoutMenuResult);
+    
     return true;
 }

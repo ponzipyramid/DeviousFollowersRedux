@@ -71,6 +71,11 @@ bool Deal::ConflictsWith(Deal* other) {
     if (excludeDeals.count(other->name)) {
         return true;
     }
+    for (int i = 0; i < other->rules.size(); i++) {
+        if (ConflictsWith(&other->rules[i])) {
+            return true;
+        }
+    }
 
     return false;
 }
@@ -80,6 +85,11 @@ bool Deal::ConflictsWith(Rule* other) {
         return true;
     }
 
+    for (int i = 0; i < rules.size(); i++) {
+        if (rules[i].ConflictsWith(other)) {
+            return true;
+        }
+    }
     return false;
 }
 
@@ -102,48 +112,39 @@ bool Rule::RulesCompatible(Rule* r1, Rule* r2) {
         for (int j = 0; j < rules2.size(); j++) {
             bool conflict = false;
             other = rules2[j];
-            if (curr->type == "wear" && other->type == "wear" && !(curr->negate && other->negate)) {
-                for (int slot : curr->slots) {
-                    if (other->slots.contains(slot)) {
-                        std::string slotString1;
-                        std::string slotString2;
+            
+            if (!InternalCheck(curr, other) || !InternalCheck(other, curr)) return false;
+        }
+    }
+    return true;
+}
 
-                        for (auto slot : curr->slots) {
-                            slotString1 += " " + std::to_string(slot);
-                        }
-                        for (auto slot : other->slots) {
-                            slotString2 += " " + std::to_string(slot);
-                        }
-                        conflict = true;
-                        break;
-                    }
-                }
-            } else if (curr->type == "bathe" && other->type == "bathe" && other->negate != curr->negate) {
-                conflict = true;
-            }
-            if (!conflict) {
-                return true;
-            }
+bool Rule::InternalCheck(Rule* r1, Rule* r2) {
+    if (r1->type == "naked" && r2->type == "naked") return false;
+
+    if (r1->type == "wear" && r2->type == "wear") {
+        for (int slot : r1->slots) {
+            if (r2->slots.contains(slot)) return false;
         }
     }
 
-    return false;
+    if (r1->type == "bathe" && r2->type == "no bathe") return false;
+
+    return true;
+
 }
 
-bool Rule::IsEnabled() { 
-    auto quest = RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESQuest>(0x1BD274, "DeviousFollowers.esp");
+bool Rule::IsEnabled() {
+    try {
+        auto quest = RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESQuest>(0x1BD274, "DeviousFollowers.esp");
+        auto ptr = ScriptUtils::GetScriptObject(quest, "_DFlowModDealController");
+        auto val = ScriptUtils::GetProperty<int>(ptr, statusProperty);
 
-    SKSE::log::info("Found Mod Deal Settings {}", quest != nullptr);
-
-    auto ptr = ScriptUtils::GetScriptObject(quest, "_DFlowModDealController");
-
-    SKSE::log::info("Found Mod Deal Script Ptr {}, fetching property {}", ptr != nullptr, statusProperty);
-
-    auto val = ScriptUtils::GetProperty<int>(ptr, statusProperty);
-
-    SKSE::log::info("{} rule status is {}", name, val);
-
-    return val != 0;
+        return val != 0;
+    } catch (...) {
+        SKSE::log::info("Failed to retrieve rule status property {}", name);
+        return false;
+    }
 }
 
 
@@ -188,14 +189,6 @@ bool Deal::HasNextStage() {
 
     return hasNext;
 }
-
-void Deal::SetMaxStage(int max) { 
-    int maxStage = GetMaxStage();
-
-    SKSE::log::info("Setting max stage for {} to {}", fullName, max);
-    maxStage = max; 
-}
-
 Deal::Deal(std::string group, std::string name) { 
     this->name = name;
     this->fullName = group + '/' + name;
@@ -282,4 +275,11 @@ void Deal::ToggleStageVariation(int stageIndex, int varIndex, bool enabled) {
         SKSE::log::info("Failed to disable stage {} {} {} {}", stageIndex, varIndex, enabled,
                         stages[stageIndex].alt.size());
     }
+}
+
+void Deal::SetMaxStage(int max) {
+    int maxStage = GetMaxStage();
+
+    SKSE::log::info("Setting max stage for {} to {}", fullName, max);
+    maxStage = max;
 }
