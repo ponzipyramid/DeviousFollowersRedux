@@ -121,6 +121,8 @@ namespace DFF {
 
         std::vector<int> GetDealFinalStageIndexes(RE::TESQuest* q);
 
+        bool IsDealValid(RE::TESQuest* q);
+
         void ShowBuyoutMenu();
 
         [[nodiscard]] inline bool IsBuyoutSelected() { return menuChosen; }

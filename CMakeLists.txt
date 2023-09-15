@@ -26,6 +26,8 @@ set(headers
         include/DFF/DealManager.h
         include/Script.hpp
         include/UI.h
+        include/Device/DeviceLibrary.h
+        include/Device/DeviceManager.h
     )
 
 set(sources
@@ -34,6 +36,7 @@ set(sources
         src/DealManager.cpp
         src/Main.cpp
         src/Papyrus.cpp
+        src/DeviceManager.cpp
 
         ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
 

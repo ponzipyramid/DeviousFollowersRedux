@@ -1,6 +1,7 @@
 #include "Papyrus.h"
 
 #include <DFF/DealManager.h>
+#include <Device/DeviceManager.h>
 
 using namespace DFF;
 using namespace RE;
@@ -10,6 +11,7 @@ using namespace SKSE;
 
 namespace {
     constexpr std::string_view PapyrusClass = "DealManager";
+    constexpr std::string_view PapyrusDeviceClass = "DeviceManager";
 
     int32_t SelectDeal(StaticFunctionTag*, int track, int maxModDeals, float_t prefersModular, int lastRejectedId) {
         return DealManager::GetSingleton().SelectDeal(track, maxModDeals, prefersModular, lastRejectedId);
@@ -133,6 +135,10 @@ namespace {
         return DealManager::GetSingleton().GetDealFinalStageIndexes(q);
     }
 
+    bool IsDealValid(StaticFunctionTag*, RE::TESQuest* q) {
+        return DealManager::GetSingleton().IsDealValid(q);
+    }
+
     void ShowBuyoutMenuInternal(StaticFunctionTag*) { 
         DealManager::GetSingleton().ShowBuyoutMenu();
     }
@@ -142,9 +148,18 @@ namespace {
     }
 
     RE::TESQuest* GetBuyoutMenuResult(StaticFunctionTag*) { return DealManager::GetSingleton().GetBuyoutMenuResult(); }
+
+    RE::TESObjectARMO* GetRandomDeviceByKeyword(StaticFunctionTag*, RE::Actor* actor, RE::BGSKeyword* kwd) {
+        return DeviceManager::GetSingleton().GetRandomDeviceByKeyword(actor, kwd);
+    }
+
+    RE::TESObjectARMO* GetWornItemByKeyword(StaticFunctionTag*, RE::Actor* actor, RE::BGSKeyword* kwd) {
+        return DeviceManager::GetSingleton().GetWornItemByKeyword(actor, kwd);
+    }
 }
 
 bool DFF::RegisterDealManager(IVirtualMachine* vm) {
+    // Deal functions
     vm->RegisterFunction("SelectDeal", PapyrusClass, SelectDeal);
     vm->RegisterFunction("ActivateDeal", PapyrusClass, ActivateDeal);
     vm->RegisterFunction("ActivateDealByQuest", PapyrusClass, ActivateDealByQuest);
@@ -171,7 +186,7 @@ bool DFF::RegisterDealManager(IVirtualMachine* vm) {
     vm->RegisterFunction("GetInventoryNamedObjects", PapyrusClass, GetInventoryNamedObjects);
 
     vm->RegisterFunction("GetGroupNames", PapyrusClass, GetGroupNames);
-    vm->RegisterFunction("GetGroupDeals", PapyrusClass, GetGroupDeals);
+    vm->RegisterFunction("IsDealValid", PapyrusClass, IsDealValid);
 
 
     vm->RegisterFunction("SelectRandomActiveDeal", PapyrusClass, SelectRandomActiveDeal);
@@ -180,10 +195,16 @@ bool DFF::RegisterDealManager(IVirtualMachine* vm) {
     vm->RegisterFunction("GetDealFinalStages", PapyrusClass, GetDealFinalStages);
     
     vm->RegisterFunction("GetDealFinalStageIndexes", PapyrusClass, GetDealFinalStageIndexes);
+    vm->RegisterFunction("GetDealFinalStageIndexes", PapyrusClass, GetDealFinalStageIndexes);
     
     vm->RegisterFunction("IsBuyoutSelected", PapyrusClass, IsBuyoutSelected);
     vm->RegisterFunction("ShowBuyoutMenuInternal", PapyrusClass, ShowBuyoutMenuInternal);
     vm->RegisterFunction("GetBuyoutMenuResult", PapyrusClass, GetBuyoutMenuResult);
     
+
+    // Device functions
+    vm->RegisterFunction("GetRandomDeviceByKeyword", PapyrusDeviceClass, GetRandomDeviceByKeyword);
+    vm->RegisterFunction("GetWornItemByKeyword", PapyrusDeviceClass, GetWornItemByKeyword);
+
     return true;
 }

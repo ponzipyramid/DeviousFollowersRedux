@@ -9,7 +9,6 @@
 #include <thread>
 #include <stdlib.h>
 #include "UI.h"
-#include <future>
 
 using namespace RE;
 using namespace DFF;
@@ -18,24 +17,25 @@ using namespace articuno::ryml;
 
 namespace {
     inline const auto ActiveDealsRecord = _byteswap_ulong('ACTD');
+
+    int PickRandom(int max) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> distr(0, max - 1);
+        return distr(gen);
+    }
+
+    int PickRandom(int min, int max) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> distr(min, max - 1);
+        return distr(gen);
+    }
+
 }
 DealManager& DealManager::GetSingleton() noexcept {
     static DealManager instance;
     return instance;
-}
-
-int PickRandom(int max) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> distr(0, max - 1);
-    return distr(gen);
-}
-
-int PickRandom(int min, int max) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> distr(min, max - 1);
-    return distr(gen);
 }
 
 bool IsDirValid(std::string dir) {
@@ -52,7 +52,7 @@ bool IsDirValid(std::string dir) {
 }
 
 void DealManager::InitDeals() {
-    std::string dir("Data\\SKSE\\Plugins\\DFF");
+    std::string dir("Data\\SKSE\\Plugins\\Devious Followers Redux\\Addons");
    
     if (!IsDirValid(dir)) {
         log::info("DFF Directory not valid");
@@ -517,7 +517,15 @@ void DealManager::RemoveDeal(RE::TESQuest* quest) {
 
 int DealManager::GetStage(int id) { return deals[id_name_map[id]].GetStage(); }
 
-int DealManager::GetStageIndex(RE::TESQuest* q) { return formMap[q->GetFormID()]->GetStageIndex(); }
+int DealManager::GetStageIndex(RE::TESQuest* q) {
+    Deal* deal = formMap[q->GetFormID()];
+
+    if (deal) {
+        return deal->GetStageIndex();
+    } else {
+        return -1;
+    }
+}
 
 RE::TESQuest* DealManager::GetDealQuest(int id) {
     return deals[id_name_map[id]].GetQuest(); 
@@ -699,17 +707,24 @@ RE::TESQuest* DealManager::SelectRandomActiveDeal() {
 
 int DealManager::GetDealNumStages(RE::TESQuest* q) { 
     Deal* deal = formMap[q->GetFormID()];
-    return deal->GetNumStages();
+    if (deal)
+        return deal->GetNumStages();
+    else
+        return 0;
 }
 
 std::vector<std::string> DealManager::GetDealFinalStages(RE::TESQuest* q) {
+    std::vector<std::string> stageIndices;
+
     Deal* deal = formMap[q->GetFormID()];
+
+    if (!deal) return stageIndices;
+
     auto stages = deal->GetStages();
 
     auto lastStage = stages[stages.size() - 1];
     auto altStages = lastStage.GetAltStages();
 
-    std::vector<std::string> stageIndices;
     stageIndices.reserve(altStages.size() + 1);
     stageIndices.push_back(lastStage.GetName());
 
@@ -721,13 +736,16 @@ std::vector<std::string> DealManager::GetDealFinalStages(RE::TESQuest* q) {
 }
 
 std::vector<int> DealManager::GetDealFinalStageIndexes(RE::TESQuest* q) {
+    std::vector<int> stageIndices;
+    
     Deal* deal = formMap[q->GetFormID()];
+    if (!deal) return stageIndices;
+
     auto stages = deal->GetStages();
 
     auto lastStage = stages[stages.size() - 1];
     auto altStages = lastStage.GetAltStages();
 
-    std::vector<int> stageIndices;
     stageIndices.reserve(altStages.size() + 1);
     stageIndices.push_back(lastStage.GetIndex());
 
@@ -737,6 +755,8 @@ std::vector<int> DealManager::GetDealFinalStageIndexes(RE::TESQuest* q) {
 
     return stageIndices;
 }
+
+bool DealManager::IsDealValid(RE::TESQuest* q) { return formMap[q->GetFormID()] != nullptr; }
 
 void DealManager::ShowBuyoutMenu() {
     std::string msg = "Buyout: Select a Deal";
@@ -848,6 +868,18 @@ void DealManager::OnGameSaved(SerializationInterface* serde) {
 
         serde->WriteRecordData(&maxStage, sizeof(maxStage));
     }
+
+    // save active rules for each modular deal
+    auto ruleSize = GetSingleton().activeRules.size();
+    serde->WriteRecordData(&ruleSize, sizeof(ruleSize));
+    for (auto& [deal, rules] : GetSingleton().activeRules) {
+        WriteString(serde, deal->GetFullName());
+        auto ruleCount = rules.size();
+        serde->WriteRecordData(&ruleCount, sizeof(ruleCount));
+        for (Rule* rule : rules) {
+            WriteString(serde, rule->GetFullName());
+        }
+    }
 }
 
 void DealManager::OnGameLoaded(SerializationInterface* serde) {
@@ -857,10 +889,10 @@ void DealManager::OnGameLoaded(SerializationInterface* serde) {
 
     while (serde->GetNextRecordInfo(type, version, size)) {
         if (type == ActiveDealsRecord) {
-            log::info("Loading in save data");
             GetSingleton().id_name_map.clear();
             GetSingleton().name_id_map.clear();
 
+            // load in deal id mappings
             std::size_t mapSize;
             serde->ReadRecordData(&mapSize, sizeof(mapSize));
             for (; mapSize > 0; --mapSize) {
@@ -871,6 +903,20 @@ void DealManager::OnGameLoaded(SerializationInterface* serde) {
 
                 GetSingleton().id_name_map[id] = name;
                 GetSingleton().name_id_map[name] = id;
+            }
+
+            // load in active rules for modular deals
+            std::size_t ruleSize;
+            serde->ReadRecordData(&ruleSize, sizeof(ruleSize));
+            for (; ruleSize > 0; --ruleSize) {
+                std::string id = ReadString(serde);
+                Deal& deal = GetSingleton().deals[id];
+                std::size_t ruleCount;
+                serde->ReadRecordData(&ruleCount, sizeof(ruleCount));
+                for (; ruleCount > 0; --ruleCount) {
+                    std::string ruleId = ReadString(serde);
+                    GetSingleton().activeRules[&GetSingleton().deals[id]].push_back(&GetSingleton().rules[ruleId]);
+                }
             }
         }
     }

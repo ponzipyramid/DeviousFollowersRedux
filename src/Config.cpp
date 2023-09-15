@@ -9,7 +9,7 @@ const Config& Config::GetSingleton() noexcept {
     static std::atomic_bool initialized;
     static std::latch latch(1);
     if (!initialized.exchange(true)) {
-        std::ifstream inputFile(R"(Data\SKSE\Plugins\DeviousFollowersFramework.yaml)");
+        std::ifstream inputFile(R"(Data\SKSE\Plugins\Devious Followers Redux\Config\preferences.yaml)");
         if (inputFile.good()) {
             articuno::ryml::yaml_source ar(inputFile);
             ar >> instance;
