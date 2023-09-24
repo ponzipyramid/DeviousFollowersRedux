@@ -2,6 +2,7 @@
 
 #include <RE/Skyrim.h>
 #include <DFF/Deal.h>
+#include <DFF/Rule.h>
 
 namespace DFF {
 #pragma warning(push)
@@ -33,161 +34,82 @@ namespace DFF {
 
         void InitQuestData();
 
-        int SelectDeal(int track, int maxModDeals, float prefersModular, int lastRejectedId);
+        int SelectDeal(int lastRejectedId);
 
-        /**
-         * Inform DFF that a deal has been activated.
-         *
-         * @param The id of the deal that has been selected. This should be the deal chosen by SelectDeal in most cases.\
-         */
-        void ActivateDeal(int id);
-        void ActivateDeal(RE::TESQuest* q);
+        void ActivateRule(int id);
 
-        /**
-         * Inform DFF that a deal has been removed.
-         *
-         * @param The id of the deal that has been removed.
-         */
-        void RemoveDeal(RE::TESQuest* quest);
+        void RemoveDeal(std::string name);
 
-        /**
-         * Return the quest stage
-         *
-         * @param The id of the deal.
-         */
-        int GetStage(int id);
+        std::vector<std::string> GetActiveDeals();
 
-        /**
-         * Return the next stage
-         *
-         * @param The id of the deal.
-         */
-        int GetStageIndex(RE::TESQuest* quest);
-
-        /**
-         * Allows for checking if a particular deal is active. Generally used for displaying buy out deal option.
-         *
-         * @param The id of the deal.
-         * 
-         * @return true if deal is active, false if not
-         */
-        bool IsDealActive(int id);
-
-        /**
-         * Allows for checking if a particular deal has been selected. 
-         *
-         * @param The id of the deal.
-         *
-         * @return true if deal is active, false if not
-         */
-        bool IsDealSelected(std::string name);
-
-
-        /**
-         * Get quest for deal.
-         *
-         * @param The id of the deal.
-         */
-        RE::TESQuest* GetDealQuest(int id);
-
-        void ActivateRule(RE::TESQuest* quest, int id);
-
-        void LoadActiveModularRules(std::vector<RE::TESQuest*> quests, std::vector<int> ruleIds);
-
-        Deal* GetDealById(int id, bool modular = false);
-
-        void LoadRuleMaxStage(RE::TESQuest*, int maxStage);
-
-        std::vector<RE::TESQuest*> GetActiveDeals(int filter);
-        std::string GetDealName(RE::TESQuest* quest);
-        std::vector<std::string> GetDealRules(RE::TESQuest* quest);
-
-        void ToggleRule(std::string group, int id, bool enabled);
-        void ToggleStageVariation(std::string name, int stageIndex, int varIndex, bool enabled);
-
-        int GetDealNextQuestStage(int id);
-
-        RE::TESGlobal* GetDealCostGlobal(RE::TESQuest* q);
-        RE::TESGlobal* GetDealTimerGlobal(RE::TESQuest* q);
+        std::vector<std::string> GetDealRules(std::string name);
 
         std::vector<std::string> GetGroupNames();
-        std::vector<RE::TESQuest*> GetGroupDeals(std::string groupName, int filter);
 
-        RE::TESQuest* SelectRandomActiveDeal();
-
-        int GetDealNumStages(RE::TESQuest* q);
-
-        std::vector<std::string> GetDealFinalStages(RE::TESQuest* q);
-
-        std::vector<int> GetDealFinalStageIndexes(RE::TESQuest* q);
-
-        bool IsDealValid(RE::TESQuest* q);
+        std::vector<std::string> GetGroupRules(std::string groupName);
 
         void ShowBuyoutMenu();
 
         [[nodiscard]] inline bool IsBuyoutSelected() { return menuChosen; }
         
-        RE::TESQuest* GetBuyoutMenuResult();
+        int GetBuyoutMenuResult();
 
-        /**
-         * The serialization handler for reverting game state.
-         *
-         * <p>
-         * This is called as the handler for revert. Revert is called by SKSE on a plugin that is registered for
-         * serialization handling on a new game or before a save game is loaded. It should be used to revert the state
-         * of the plugin back to its default.
-         * </p>
-         */
         static void OnRevert(SKSE::SerializationInterface*);
 
-        /**
-         * The serialization handler for saving data to the cosave.
-         *
-         * @param serde The serialization interface used to write data.
-         */
         static void OnGameSaved(SKSE::SerializationInterface* serde);
 
-        /**
-         * The serialization handler for loading data from a cosave.
-         *
-         * @param serde  The serialization interface used to read data.
-         */
         static void OnGameLoaded(SKSE::SerializationInterface* serde);
 
-
     private:
-        void RegeneratePotentialDeals(int maxModDeals, int lastRejectedId);
-        bool DoesActiveExclude(Conflictor* entity);
-        Rule* GetRuleById(int id);
-
         DealManager() = default;
+        
+        std::string GetNextDealName();
+        
         mutable std::mutex _lock;
 
-        std::unordered_map<std::string, Deal> deals;
-        std::unordered_map<int, std::string> id_name_map;
-        std::unordered_map<std::string, int> name_id_map;
+        std::unordered_map<int, std::string> id_map;
 
-        std::vector<std::string> candidateClassicDeals;
-        std::vector<std::string> candidateModularDeals;
+        std::unordered_map<std::string, Rule> rules; // a list of all rules
+        std::unordered_map<std::string, std::vector<Rule*>> ruleGroups; // what add on each rule is from
 
-        std::vector<Deal*> builtInDeals;
-        std::vector<Deal*> modularDeals;
+        std::unordered_map<std::string, Deal> activeDeals;  // all active deals containing rules
 
-        std::unordered_set<std::string> activeDeals;
-        std::unordered_map<std::string, std::vector<std::string>> dealGroups;
-        std::unordered_map<RE::FormID, Deal*> formMap;
-        std::string selectedDeal = "";
-
-        std::unordered_map<std::string, Rule> rules;
-        std::unordered_map<std::string, std::vector<Rule*>> ruleGroups;
-        std::unordered_map<Deal*, std::vector<Rule*>> activeRules;
-
-        std::vector<Rule*> candidateRules;
-
-        std::unordered_map<Conflictor*, std::unordered_set<Conflictor*>> conflicts;
+        std::unordered_map<Rule*, std::unordered_set<Rule*>> conflicts; // every conflict between every rule generated on startup
 
         bool menuChosen;
-        std::string chosenDeal;
+        int chosenCost;
+
+        std::vector<std::string> allDealNames{
+            "Skeever", 
+            "Bear", 
+            "Wolf", 
+            "Slaughterfish", 
+            "Deer", 
+            "Troll", 
+            "Mudcrab", 
+            "Spider", 
+            "Hopper", 
+            "Cat",  
+            "Dog",           
+            "Bat",           
+            "Clam",      
+            "Rabbit", 
+            "Fox",     
+            "Oyster",
+            "Hawk", 
+            "Tern", 
+            "Cow",  
+            "Moth", 
+            "Butterfly", 
+            "Salmon", 
+            "Chaurus", 
+            "Dragon", 
+            "Draugr",  
+            "Automaton", 
+            "Giant", 
+            "Hagraven",
+            "Wisp"
+        };
     };
 #pragma warning(pop)
 }

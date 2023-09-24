@@ -23,6 +23,7 @@ configure_file(
 set(headers
         include/DFF/DFF.h
         include/DFF/Deal.h
+        include/DFF/Rule.h
         include/DFF/DealManager.h
         include/Script.hpp
         include/UI.h
@@ -33,6 +34,7 @@ set(headers
 set(sources
         src/Config.cpp
         src/Deal.cpp
+        src/Rule.cpp
         src/DealManager.cpp
         src/Main.cpp
         src/Papyrus.cpp
