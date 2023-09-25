@@ -7,34 +7,19 @@
 namespace DFF {
 #pragma warning(push)
 #pragma warning(disable : 4251)
-    /**
-     * The class which tracks hit count information.
-     *
-     * <p>
-     * All aspects of this are done in a singleton since SKSE cannot create instances of new Papyrus types such as a
-     * hit counter.
-     * </p>
-     *
-     * <p>
-     * Hit count information must be tracked in the SKSE cosave when the game is save and loaded. Therefore the main
-     * <code>SKSEQuery_Load</code> call must be sure to initialize the serialization handlers such that they will call
-     * this class when it needs to save or load data.
-     * </p>
-     */
     class __declspec(dllexport) DealManager {
     public:
-        /**
-         * Get the singleton instance of the <code>DealManager</code>.
-         */
         [[nodiscard]] static DealManager& GetSingleton() noexcept;
 
         void InitDeals();
 
         void InitQuests();
 
-        int SelectDeal(int lastRejectedId);
+        std::string SelectRule(std::string lastRejected);
 
-        int ActivateRule(int id);
+        bool CanEnableRule(std::string rule);
+        
+        bool CanDisableRule(std::string rule);
 
         int ActivateRule(std::string name);
 
@@ -50,11 +35,15 @@ namespace DFF {
 
         std::string GetRandomDeal();
 
-        RE::TESGlobal* GetRuleGlobal(int id);
+        RE::TESGlobal* GetRuleGlobal(std::string path);
+        
+        std::string GetRuleName(std::string path);
+
+        std::string GetRuleDesc(std::string path);
+
+        std::string GetRuleHint(std::string path);
         
         int GetDealCost(std::string name);
-
-        double GetExpensiveDebtCount();
 
         std::vector<std::string> GetDeals();
 
@@ -80,14 +69,12 @@ namespace DFF {
 
     private:
         DealManager() = default;
-        
+
+        Rule* GetRuleByPath(std::string path);
+        Deal* GetDealByName(std::string path);
         std::string GetNextDealName();
         
         mutable std::mutex _lock;
-
-
-        std::unordered_map<int, std::string> id_map;
-        std::unordered_map<std::string, int> name_map;
 
         std::unordered_map<std::string, Rule> rules; // a list of all rules
         std::unordered_map<std::string, std::vector<Rule*>> ruleGroups; // what add on each rule is from

@@ -13,8 +13,11 @@ namespace DFF {
         [[nodiscard]] inline const std::string GetType() { return type; }
         [[nodiscard]] inline const std::string GetPath() { return path; }
         [[nodiscard]] inline const std::string GetName() { return name; }
+        [[nodiscard]] inline const std::string GetDesc() { return description; }
+        [[nodiscard]] inline const std::string GetHint() { return hint; }
         [[nodiscard]] inline const bool CheckSeverity(int maxLevel) { return maxLevel >= this->level; }
-        [[nodiscard]] inline const bool MetRequirements() { return reqsMet; }
+        [[nodiscard]] inline const bool CanEnable() { return reqsMet; }
+        [[nodiscard]] inline const bool CanDisable() { return !preventDisable; }
         [[nodiscard]] inline const bool IsValid() { return statusGlobal != nullptr; }
         [[nodiscard]] inline const bool IsEnabled() { return statusGlobal->value > 0; }
         [[nodiscard]] inline RE::TESGlobal* GetGlobal() { return statusGlobal; }
@@ -36,6 +39,9 @@ namespace DFF {
             ar <=> articuno::kv(level, "level");
 
             ar <=> articuno::kv(description, "description");
+            ar <=> articuno::kv(hint, "hint");
+            
+            ar <=> articuno::kv(preventDisable, "preventDisable");
             ar <=> articuno::kv(requirements, "requirements");
         }
 
@@ -45,6 +51,7 @@ namespace DFF {
         std::string name;
         std::string path;
         std::string description;
+        std::string hint;
 
         std::string type;
         bool negate;
@@ -53,6 +60,7 @@ namespace DFF {
 
         RE::TESGlobal* statusGlobal = nullptr;
 
+        bool preventDisable = false;
         bool reqsMet = true;
         std::vector<std::string> requirements;
 

@@ -14,6 +14,8 @@ void Rule::Init() {
             break;
         }
     }
+
+    if (!reqsMet) statusGlobal->value = 0;
 }
 
 bool Rule::RulesCompatible(Rule* r1, Rule* r2) {

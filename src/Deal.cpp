@@ -6,7 +6,7 @@
 using namespace DFF;
 
 void Deal::UpdateTimer() {
-    timer = Settings::GetGameDaysPassed() + Settings::GetDealsBaseDays();
+    timer =  + Settings::GetDealsBaseDays();
 }
 
 void Deal::Extend(double by) {
@@ -18,7 +18,6 @@ void Deal::Extend(double by) {
         }
 
         timer += baseDays;
-                
     } else {
         timer += by;
     }
@@ -69,9 +68,12 @@ Deal::Deal(SKSE::SerializationInterface* serde) {
 
     auto allRules = DealManager::GetSingleton().rules;
 
-    for (; numRules >= 0; numRules--) {
-        auto name = Serialization::Read<std::string>(serde);
-        auto rule = allRules[name];
-        rules.push_back(&rule);
+    for (; numRules > 0; numRules--) {
+        auto path = Serialization::Read<std::string>(serde);
+        if (auto rule = DealManager::GetSingleton().GetRuleByPath(path)) {
+            rules.push_back(rule); 
+        } else {
+            SKSE::log::info("Deal Constructor: Failed to load in rule {}", path);
+        }
     }
 }
