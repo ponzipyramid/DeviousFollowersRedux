@@ -24,9 +24,11 @@ set(headers
         include/DFF/DFF.h
         include/DFF/Deal.h
         include/DFF/Rule.h
+        include/DFF/Settings.h
         include/DFF/DealManager.h
         include/Script.hpp
-        include/UI.h
+        include/UI.hpp
+        include/Serialization.hpp
         include/Device/DeviceLibrary.h
         include/Device/DeviceManager.h
     )

@@ -1,14 +1,16 @@
 #include <SKSE/SKSE.h>
 #include <DFF/DealManager.h>
-#include <Config.h>
 #include <DFF/Deal.h>
+#include <Config.h>
+#include "UI.hpp"
+#include "Serialization.hpp"
+
 #include <articuno/archives/ryml/ryml.h>
+
 #include <random>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <thread>
 #include <stdlib.h>
-#include "UI.h"
 
 using namespace RE;
 using namespace DFF;
@@ -21,14 +23,7 @@ namespace {
     int PickRandom(int max) {
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::uniform_int_distribution<> distr(0, max - 1);
-        return distr(gen);
-    }
-
-    int PickRandom(int min, int max) {
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<> distr(min, max - 1);
+        std::uniform_int_distribution<> distr(0, max);
         return distr(gen);
     }
 
@@ -55,15 +50,12 @@ void DealManager::InitDeals() {
     std::string dir("Data\\SKSE\\Plugins\\Devious Followers Redux\\Addons");
    
     if (!IsDirValid(dir)) {
-        log::info("DFR Directory not valid");
+        log::info("InitDeals: DFR Directory not valid");
         return;
     }
 
     std::string ext1(".yaml");
     std::string ext2(".yml");
-
-    std::vector<std::string> dealIds;
-    std::vector<std::string> ruleIds;
 
     for (const auto& a : std::filesystem::directory_iterator(dir)) {
 
@@ -74,7 +66,7 @@ void DealManager::InitDeals() {
         std::string dirName = a.path().stem().string();
         std::string groupName = dir + "\\" + dirName;
 
-        log::info("Initializing add-on {}", dirName);
+        log::info("InitDeals: Initializing add-on {}", dirName);
 
         std::string rulesDir = groupName + "\\Rules";
 
@@ -85,7 +77,7 @@ void DealManager::InitDeals() {
                 if (fileName.extension() == ext1 || fileName.extension() == ext2) {
                     const auto name = fileName.stem().string();
 
-                    Rule entity(dirName, name);
+                    Rule entity(dirName + "/" + name);
                     bool issue = false;
 
                     try {
@@ -94,28 +86,45 @@ void DealManager::InitDeals() {
                             yaml_source ar(inputFile);
 
                             ar >> entity;
-                            rules[entity.GetFullName()] = entity;
-                            ruleIds.push_back(entity.GetFullName());
-                            ruleGroups[dirName].push_back(&rules[entity.GetFullName()]);
-                            log::info("Registered Rule {}", entity.GetName());
+                            rules[entity.GetPath()] = entity;
+                            ruleGroups[dirName].push_back(&rules[entity.GetPath()]);
+                            log::info("InitDeals: Registered Rule {}", entity.GetName());
 
                         } else
-                            log::error("Error: Failed to read file");
+                            log::error("InitDeals: Error - Failed to read file");
                     } catch (const std::exception& e) {
                         issue = true;
-                        log::error("Error: {}", e.what());
+                        log::error("InitDeals: Error - {}", e.what());
                     }
 
-                    if (issue) log::error("Failed to register rule: {}", entity.GetName());
+                    if (issue) log::error("InitDeals: Failed to register rule: {}", entity.GetName());
                 }
             }
         } else {
-            log::info("No rules found");
+            log::info("InitDeals: No rules found");
         }
     }
-    Rule* r1;
-    Rule* r2;
 
+    log::info("InitDeals: Finished initializing. Registered {} rules.", rules.size());
+}
+
+void DealManager::InitQuests() {
+    std::vector<std::string> toRemove;
+
+    std::vector<std::string> ruleIds;
+    for (auto& [key, rule] : rules) {
+        rule.Init();
+        if (rule.IsValid()) {
+            ruleIds.push_back(rule.GetPath());     
+        } else {
+            toRemove.push_back(key);
+        }
+    }
+
+    for (auto remove : toRemove) rules.erase(remove);
+
+    Rule* r1 = nullptr;
+    Rule* r2 = nullptr;
 
     for (int i = 0; i < ruleIds.size(); i++) {
         r1 = &rules[ruleIds[i]];
@@ -123,63 +132,167 @@ void DealManager::InitDeals() {
         for (int j = i + 1; j < ruleIds.size(); j++) {
             r2 = &rules[ruleIds[j]];
             if (r1->ConflictsWith(r2)) {
-                log::info("Rule-Rule Conflict: {} and {}", r1->GetFullName(), r2->GetFullName());
+                SKSE::log::info("InitQuests: Conflict - {} and {}", r1->GetPath(), r2->GetPath());
                 conflicts[r1].insert(r2);
                 conflicts[r2].insert(r1);
             }
         }
     }
-
-    log::info("Finished initializing. Registered {} rules.", rules.size());
-}
-
-void DealManager::InitQuests() {
-    std::vector<std::string> toRemove;
-
-    // TODO: Check if rules' quest exists and property exists within it
-
-    for (auto& [key, rule] : rules) {
-        rule.Init();
-    }
-}
-
-void DealManager::InitQuestData() {
-    // TODO: Iterate through all rule properties to figure out which ones are active
 }
 
 int DealManager::SelectDeal(int lastRejectedId) {
+    std::string lastRejected = id_map[lastRejectedId];
 
-    /*
-    TODO:
-        - get all non-conflicting rules
-        - select one at random
-        - generate id simply by iterating over map and picking next slot
-        - return rule id
-    */ 
+    std::vector<Rule*> candidateRules;
 
-    return 0;
+    for (auto& [name, rule] : rules) {
+        if (name == lastRejected) continue;
+        for (auto& [_, deal] : deals) {
+            for (auto activeRule : deal.rules) {
+                // TODO: filter on severity
+                if (!conflicts[activeRule].contains(&rule) && rule.IsEnabled()) {
+                    candidateRules.push_back(&rule);
+                }
+            }
+        }
+    }
+
+    int index = PickRandom(candidateRules.size());
+    if (index == candidateRules.size()) return 0;
+    else {
+        auto rule = candidateRules[index];
+        auto id = 1;
+        auto path = rule->GetPath();
+
+        if (name_map.count(path)) {
+            id = name_map[path];
+        } else {
+            while (id_map.count(id)) {
+                id += 1;
+            }
+        }
+
+        id_map[id] = path;
+        name_map[path] = id;
+
+        return id;
+    }
 }
 
-void DealManager::ActivateRule(int id) {
-    /*
-    TODO:
-        - use id map to get associate rule object
-        - add to active rules
-    */
+int DealManager::ActivateRule(int id) {
+    if (id == 0) {
+        ExtendDeal(GetRandomDeal(), 0.0f);
+    }
+    return ActivateRule(id_map[id]); 
+}
+
+int DealManager::ActivateRule(std::string ruleName) {
+    if (ruleName.empty()) {
+        SKSE::log::error("ActivateRule: Invalid id given");
+        return -1;
+    } else {
+        std::vector<Deal*> candidateDeals;
+        for (auto& [name, deal] : deals) {
+            if (deal.IsOpen()) {
+                candidateDeals.push_back(&deal);
+            }
+        }
+
+        Deal* chosen;
+        if (candidateDeals.empty()) { // create new one if none are open
+            Deal deal(GetNextDealName());
+            deals[deal.GetName()] = deal;
+            chosen = &deals[deal.GetName()];
+        } else {
+            int index = PickRandom(candidateDeals.size());
+            chosen = candidateDeals[index];
+        }
+
+        chosen->UpdateTimer();
+
+        chosen->rules.push_back(&rules[ruleName]);
+        return chosen->rules.size();
+    }
 }
 
 void DealManager::RemoveDeal(std::string name) {
-    /*
-    TODO:
-        - use id map to get associate rule object
-        - remove from active rules
-    */
+    if (auto deal = &deals[name]) {
+        for (auto& rule : deal->rules) {
+            if (rule->IsEnabled())
+                rule->GetGlobal()->value = 1; // reset to 1 only if enabled or running
+        }
+    }
+
+    deals.erase(name);
 }
 
-std::vector<std::string> DealManager::GetActiveDeals() { 
+void DealManager::ResetAllDeals() {
+    for (auto [_, deal] : deals) {
+        for (auto& rule : deal.rules) {
+            if (rule->IsEnabled()) rule->GetGlobal()->value = 1;  // reset to 1 only if enabled or running
+        }
+    }
+
+    deals.clear();
+}
+
+void DealManager::Pause() {
+    // TODO: cache everything and then reset everything
+}
+
+void DealManager::Resume() {
+    // TODO: Read and apply cached data
+}
+
+void DealManager::ExtendDeal(std::string name, double by) {
+    if (auto deal = &deals[name]) {
+        deal->Extend(by);
+    }
+}
+
+std::string DealManager::GetRandomDeal() {
+    std::vector<std::string> activeDeals;
+    for (auto [name, _] : deals) activeDeals.push_back(name);
+    return activeDeals[PickRandom(activeDeals.size() - 1)];
+}
+
+RE::TESGlobal* DealManager::GetRuleGlobal(int id) {
+    auto name = id_map[id];
+    if (Rule* rule = &rules[name])
+        return rule->GetGlobal();
+    else
+        return nullptr;
+}
+
+int DealManager::GetDealCost(std::string name) {
+    if (auto deal = &deals[name]) {
+        return deal->GetCost();
+    } else {
+        return 0;
+    }
+}
+
+double DealManager::GetExpensiveDebtCount() {
+    // TODO: replace with debt calc
+    double expensiveDebtCount = 0.0f;
+    
+    for (auto& [_, deal] : deals) {
+        int multiplier = 1;
+        for (auto& rule : deal.rules) {
+            if (rule->GetPath() == "devious followers continued/expensive") {
+                expensiveDebtCount += multiplier;
+            }
+            multiplier *= 2;
+        }
+    }
+
+    return expensiveDebtCount; 
+}
+
+std::vector<std::string> DealManager::GetDeals() { 
     std::vector<std::string> active;
 
-    for (auto& [name, _] : activeDeals) {
+    for (auto& [name, _] : deals) {
         active.push_back(name);
     }
 
@@ -187,7 +300,7 @@ std::vector<std::string> DealManager::GetActiveDeals() {
 }
 
 std::vector<std::string> DealManager::GetDealRules(std::string name) {
-    Deal* deal = &activeDeals[name];
+    Deal* deal = &deals[name];
 
     std::vector<std::string> ruleNames;
 
@@ -226,14 +339,23 @@ std::vector<std::string> DealManager::GetGroupRules(std::string groupName) {
     return ruleNames;
 }
 
+std::vector<std::string> DealManager::GetEnslavementRules() {
+    std::vector<std::string> ruleNames;
+
+    // TODO: populate enslavement rules list
+
+    return ruleNames;
+}
+
+
 void DealManager::ShowBuyoutMenu() {
     std::string msg = "Buyout: Select a Deal";
     std::vector<std::string> options; 
-    std::vector<int> costs;
+    std::vector<std::string> dealNames;
 
-    for (auto& [name, deal] : activeDeals) {
-        auto cost = deal.GetDealCost();
-        costs.push_back(cost);
+    for (auto& [name, deal] : deals) {
+        auto cost = deal.GetCost();
+        dealNames.push_back(deal.GetName());
         
         options.push_back(std::format("{} [{}]", name, cost));
     }
@@ -245,63 +367,38 @@ void DealManager::ShowBuyoutMenu() {
 
     menuChosen = false;
 
-    TESMessageBox::Show(msg, options, [costs](int result) {
+    TESMessageBox::Show(msg, options, [dealNames](int result) {
         SKSE::log::info("Selected {}", result);
-        int val = -1;
+        std::string val;
 
-        if (result < costs.size())
-            val = costs[result];
+        if (result < dealNames.size())
+            val = dealNames[result];
         else
             SKSE::log::info("User cancelled buyout");
 
-        DealManager::GetSingleton().chosenCost = val;
+        DealManager::GetSingleton().chosenDeal = val;
         DealManager::GetSingleton().menuChosen = true;
     });
 }
 
-int DealManager::GetBuyoutMenuResult() {
+std::string DealManager::GetBuyoutMenuResult() {
     DealManager::GetSingleton().menuChosen = false;
-    return chosenCost;
+    return chosenDeal;
+}
+
+std::string DealManager::GetNextDealName() {
+    for (auto& name : allDealNames)
+        if (!deals.count(name)) return name;
+
+    SKSE::log::error("GetNextDealName - Failed to find open name");
+    return "";
 }
 
 void DealManager::OnRevert(SerializationInterface*) {
     std::unique_lock lock(GetSingleton()._lock);
     GetSingleton().id_map.clear();
-    GetSingleton().activeDeals.clear();
-}
-
-std::string ReadString(SerializationInterface* serde) {
-    std::size_t nameSize;
-    serde->ReadRecordData(&nameSize, sizeof(nameSize));
-
-    std::string name;
-    name.reserve(nameSize);
-
-    char c;
-    for (int i = 0; i < nameSize; i++) {
-        serde->ReadRecordData(&c, sizeof(c));
-        name += c;
-    }
-    return name;
-}
-
-void WriteString(SerializationInterface* serde, std::string name) {
-    std::size_t nameSize = name.size();
-    serde->WriteRecordData(&nameSize, sizeof(nameSize));
-
-    char c;
-    for (int i = 0; i < nameSize; i++) {
-        c = name[i];
-        serde->WriteRecordData(&c, sizeof(c));
-    }
-}
-
-std::string DealManager::GetNextDealName() {
-    for (auto& name : allDealNames)
-        if (!activeDeals.count(name)) return name;
-
-    SKSE::log::error("GetNextDealName - Failed to find open name");
-    return "";
+    GetSingleton().name_map.clear();
+    GetSingleton().deals.clear();
 }
 
 void DealManager::OnGameSaved(SerializationInterface* serde) {
@@ -315,7 +412,7 @@ void DealManager::OnGameSaved(SerializationInterface* serde) {
     auto mapSize = GetSingleton().id_map.size();
     serde->WriteRecordData(&mapSize, sizeof(mapSize));
     for (auto& count : GetSingleton().id_map) {
-        WriteString(serde, count.second);
+        Serialization::Write<std::string>(serde, count.second);
         int maxStage = count.first;
 
         log::info("Saved deal mapping {} -> {}", count.second, count.first);
@@ -324,15 +421,10 @@ void DealManager::OnGameSaved(SerializationInterface* serde) {
     }
 
     // save active rules for each modular deal
-    auto ruleSize = GetSingleton().activeDeals.size();
-    serde->WriteRecordData(&ruleSize, sizeof(ruleSize));
-    for (auto& [name, deal] : GetSingleton().activeDeals) {
-        WriteString(serde, deal.GetName());
-        auto ruleCount = deal.rules.size();
-        serde->WriteRecordData(&ruleCount, sizeof(ruleCount));
-        for (Rule* rule : deal.rules) {
-            WriteString(serde, rule->GetFullName());
-        }
+    auto dealSize = GetSingleton().deals.size();
+    serde->WriteRecordData(&dealSize, sizeof(dealSize));
+    for (auto& [name, deal] : GetSingleton().deals) {
+        deal.Serialize(serde);
     }
 }
 
@@ -345,33 +437,25 @@ void DealManager::OnGameLoaded(SerializationInterface* serde) {
         if (type == ActiveDealsRecord) {
             GetSingleton().id_map.clear();
 
-            // load in deal id mappings
+            // load deal id mappings
             std::size_t mapSize;
             serde->ReadRecordData(&mapSize, sizeof(mapSize));
             for (; mapSize > 0; --mapSize) {
-                std::string name = ReadString(serde);
+                std::string name = Serialization::Read<std::string>(serde);
 
                 int id;
                 serde->ReadRecordData(&id, sizeof(id));
 
                 GetSingleton().id_map[id] = name;
+                GetSingleton().name_map[name] = id;
             }
 
-            // load in active rules for modular deals
-            std::size_t ruleSize;
-            serde->ReadRecordData(&ruleSize, sizeof(ruleSize));
-            for (; ruleSize > 0; --ruleSize) {
-                std::string name = ReadString(serde);
-
-                Deal deal(name);
-                GetSingleton().activeDeals[name] = deal;
-
-                std::size_t ruleCount;
-                serde->ReadRecordData(&ruleCount, sizeof(ruleCount));
-                for (; ruleCount > 0; --ruleCount) {
-                    std::string ruleName = ReadString(serde);
-                    GetSingleton().activeDeals[name].rules.push_back(&GetSingleton().rules[ruleName]);
-                }
+            // load active deals
+            std::size_t numDeals;
+            serde->ReadRecordData(&numDeals, sizeof(numDeals));
+            for (; numDeals > 0; --numDeals) {
+                Deal deal(serde);
+                GetSingleton().deals[deal.GetName()] = deal;
             }
         }
     }

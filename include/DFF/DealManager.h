@@ -32,15 +32,31 @@ namespace DFF {
 
         void InitQuests();
 
-        void InitQuestData();
-
         int SelectDeal(int lastRejectedId);
 
-        void ActivateRule(int id);
+        int ActivateRule(int id);
+
+        int ActivateRule(std::string name);
 
         void RemoveDeal(std::string name);
 
-        std::vector<std::string> GetActiveDeals();
+        void ResetAllDeals();
+
+        void Pause();
+
+        void Resume();
+
+        void ExtendDeal(std::string deal, double by);
+
+        std::string GetRandomDeal();
+
+        RE::TESGlobal* GetRuleGlobal(int id);
+        
+        int GetDealCost(std::string name);
+
+        double GetExpensiveDebtCount();
+
+        std::vector<std::string> GetDeals();
 
         std::vector<std::string> GetDealRules(std::string name);
 
@@ -48,11 +64,13 @@ namespace DFF {
 
         std::vector<std::string> GetGroupRules(std::string groupName);
 
+        std::vector<std::string> GetEnslavementRules();
+
         void ShowBuyoutMenu();
 
         [[nodiscard]] inline bool IsBuyoutSelected() { return menuChosen; }
         
-        int GetBuyoutMenuResult();
+        std::string GetBuyoutMenuResult();
 
         static void OnRevert(SKSE::SerializationInterface*);
 
@@ -67,17 +85,19 @@ namespace DFF {
         
         mutable std::mutex _lock;
 
+
         std::unordered_map<int, std::string> id_map;
+        std::unordered_map<std::string, int> name_map;
 
         std::unordered_map<std::string, Rule> rules; // a list of all rules
         std::unordered_map<std::string, std::vector<Rule*>> ruleGroups; // what add on each rule is from
 
-        std::unordered_map<std::string, Deal> activeDeals;  // all active deals containing rules
+        std::unordered_map<std::string, Deal> deals;  // all active deals containing rules
 
         std::unordered_map<Rule*, std::unordered_set<Rule*>> conflicts; // every conflict between every rule generated on startup
 
         bool menuChosen;
-        int chosenCost;
+        std::string chosenDeal;
 
         std::vector<std::string> allDealNames{
             "Skeever", 
@@ -110,6 +130,8 @@ namespace DFF {
             "Hagraven",
             "Wisp"
         };
+
+        friend class Deal;
     };
 #pragma warning(pop)
 }

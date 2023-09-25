@@ -12,14 +12,18 @@ namespace DFF {
     public:
         [[nodiscard]] Deal() = default;
         inline Deal(std::string name) { this->name = name; }
+        Deal(SKSE::SerializationInterface* intfc);
+
         inline std::string GetName() { return name; }
+        inline bool IsOpen() { return rules.size() < 3; }
         std::vector<Rule*> rules;
-        int GetDealCost();
-
+        int GetCost();
+        void UpdateTimer();
+        void Extend(double by);
+        void Serialize(SKSE::SerializationInterface* intfc);
     private:
-
-
         std::string name;
+        double timer = 0.0f;
     };
 }
 

@@ -141,7 +141,6 @@ namespace {
                     // Data will be the name of the loaded save.
                     break;
                 case MessagingInterface::kPostLoadGame: // Player's selected save game has finished loading.
-                    DFF::DealManager::GetSingleton().InitQuestData();
                     break;
                     // Data will be a boolean indicating whether the load was successful.
                 case MessagingInterface::kSaveGame: // The player has saved a game.
