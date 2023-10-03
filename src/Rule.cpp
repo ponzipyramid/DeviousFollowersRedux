@@ -2,10 +2,26 @@
 
 using namespace DFF;
 
-void Rule::Init() {
-    RE::TESDataHandler* handler = RE::TESDataHandler::GetSingleton();
+void Rule::Enable() {
+    if (CanEnable()) statusGlobal->value = 1;
+}
+
+void Rule::Disable() {
+    if (CanDisable()) statusGlobal->value = 0;
+}
+
+void Rule::Activate() {
+    if (IsEnabled()) statusGlobal->value = 3;
+}
+
+bool Rule::Init(RE::TESDataHandler* handler) {
+    if (pack->GetQuest() == nullptr) return false;
+
+    std::string modName = pack->GetModName();
 
     statusGlobal = handler->LookupForm<RE::TESGlobal>(formId, modName);
+
+    if (statusGlobal == nullptr) return false;
 
     for (std::string req : requirements) {
         if (handler->LookupModByName(req) == nullptr) {
@@ -15,7 +31,9 @@ void Rule::Init() {
         }
     }
 
-    if (!reqsMet) statusGlobal->value = 0;
+    if (!reqsMet && CanDisable()) Disable();
+
+    return true;
 }
 
 bool Rule::RulesCompatible(Rule* r1, Rule* r2) {
@@ -34,7 +52,9 @@ bool Rule::RulesCompatible(Rule* r1, Rule* r2) {
 
 bool Rule::ConflictsWith(Rule* other) { return !(RulesCompatible(this, other) && RulesCompatible(other, this)); }
 
-Rule::Rule(std::string path) {
-    this->path = path;
-    std::transform(this->path.begin(), this->path.end(), this->path.begin(), ::tolower);
+Rule::Rule(Pack* pack, std::string name) {
+    this->name = name;
+    this->pack = pack;
+    this->id = pack->GetName() + '/' + name;
+    std::transform(this->id.begin(), this->id.end(), this->id.begin(), ::tolower);
 }

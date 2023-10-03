@@ -24,6 +24,7 @@ set(headers
         include/DFF/DFF.h
         include/DFF/Deal.h
         include/DFF/Rule.h
+        include/DFF/Pack.h
         include/DFF/Settings.h
         include/DFF/DealManager.h
         include/Script.hpp
@@ -36,6 +37,7 @@ set(headers
 set(sources
         src/Config.cpp
         src/Deal.cpp
+        src/Pack.cpp
         src/Rule.cpp
         src/DealManager.cpp
         src/Main.cpp

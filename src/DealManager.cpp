@@ -19,7 +19,7 @@ using namespace articuno::ryml;
 
 namespace {
     inline const auto ActiveDealsRecord = _byteswap_ulong('ACTD');
-    inline const auto ExtendRulePath = "devious followers continued/extend";
+    inline const auto ExtendRulePath = "devious followers/extend";
 
     int PickRandom(int max) {
         std::random_device rd;
@@ -52,11 +52,14 @@ bool IsDirValid(std::string dir) {
     return true;
 }
 
-void DealManager::InitDeals() {
+void DealManager::Init() {
+    RE::TESDataHandler* handler = RE::TESDataHandler::GetSingleton();
+    std::vector<std::string> ruleIds;
+
     std::string dir("Data\\SKSE\\Plugins\\Devious Followers Redux\\Addons");
-   
+
     if (!IsDirValid(dir)) {
-        log::info("InitDeals: DFR Directory not valid");
+        log::info("Init: DFR Directory not valid");
         return;
     }
 
@@ -64,17 +67,40 @@ void DealManager::InitDeals() {
     std::string ext2(".yml");
 
     for (const auto& a : std::filesystem::directory_iterator(dir)) {
-
         if (!std::filesystem::is_directory(a)) {
             continue;
         }
 
-        std::string dirName = a.path().stem().string();
-        std::string groupName = dir + "\\" + dirName;
+        std::string packName = a.path().stem().string();
 
-        log::info("InitDeals: Initializing add-on {}", dirName);
+        std::string configFile = dir + "\\" + packName + "\\config.yaml";
 
-        std::string rulesDir = groupName + "\\Rules";
+        std::string packId = Lowercase(packName);
+
+        Pack pack(packName);
+
+        std::ifstream inputFile(configFile);
+        if (inputFile.good()) {
+            try {
+                log::info("Init: Initializing add-on {}", packName);
+                yaml_source ar(inputFile);
+                ar >> pack;
+
+                if (pack.Init(handler)) {
+                    log::info("Init: Registered Pack {}", pack.GetName());
+                    packs[packId] = pack; 
+                } else {
+                    continue;
+                }
+            } catch (...) {
+                SKSE::log::info("Init: Failed to register {}", packName);
+            }
+        } else {
+            SKSE::log::info("Init: Failed to register {}", packName);
+            continue;
+        }
+
+        std::string rulesDir = dir + "\\" + packName + "\\Rules";
 
         if (IsDirValid(rulesDir)) {
             for (const auto& p : std::filesystem::directory_iterator(rulesDir)) {
@@ -83,7 +109,7 @@ void DealManager::InitDeals() {
                 if (fileName.extension() == ext1 || fileName.extension() == ext2) {
                     const auto name = fileName.stem().string();
 
-                    Rule entity(dirName + "/" + name);
+                    Rule rule(&packs[packId], name);
                     bool issue = false;
 
                     try {
@@ -91,45 +117,30 @@ void DealManager::InitDeals() {
                         if (inputFile.good()) {
                             yaml_source ar(inputFile);
 
-                            ar >> entity;
-                            rules[entity.GetPath()] = entity;
-                            ruleGroups[dirName].push_back(&rules[entity.GetPath()]);
-                            log::info("InitDeals: Registered Rule {}", entity.GetName());
+                            ar >> rule;
 
+                            if (rule.Init(handler)) {
+                                log::info("Init: Registered Rule {}", rule.GetName());
+                                rules[rule.GetId()] = rule;
+                                packs[packId].AddRule(&rules[rule.GetId()]);
+                            }
                         } else
-                            log::error("InitDeals: Error - Failed to read file");
+                            log::error("Init Error - Failed to read file");
                     } catch (const std::exception& e) {
                         issue = true;
-                        log::error("InitDeals: Error - {}", e.what());
+                        log::error("Init: Error - {}", e.what());
                     }
 
-                    if (issue) log::error("InitDeals: Failed to register rule: {}", entity.GetName());
+                    if (issue) log::error("Init: Failed to register rule: {}", rule.GetName());
                 }
             }
         } else {
-            log::info("InitDeals: No rules found");
+            log::info("Init: No rules found");
         }
     }
 
-    log::info("InitDeals: Registered {} rules", rules.size());
-}
-
-void DealManager::InitQuests() {
-    std::vector<std::string> toRemove;
-
-    std::vector<std::string> ruleIds;
-    for (auto& [key, rule] : rules) {
-        rule.Init();
-        if (rule.IsValid()) {
-            log::info("InitQuests: Rule {} is valid", rule.GetName());
-            ruleIds.push_back(rule.GetPath());     
-        } else {
-            log::info("InitQuests: Rule {} is invalid", rule.GetName());
-            toRemove.push_back(key);
-        }
-    }
-
-    for (auto remove : toRemove) rules.erase(remove);
+    log::info("Init: Registered {} pack(s)", packs.size());
+    log::info("Init: Registered {} rule(s)", rules.size());
 
     Rule* r1 = nullptr;
     Rule* r2 = nullptr;
@@ -140,7 +151,7 @@ void DealManager::InitQuests() {
         for (int j = i + 1; j < ruleIds.size(); j++) {
             r2 = &rules[ruleIds[j]];
             if (r1->ConflictsWith(r2)) {
-                log::info("InitQuests: Conflict - {} and {}", r1->GetPath(), r2->GetPath());
+                log::info("Init: Conflict - {} and {}", r1->GetId(), r2->GetId());
                 conflicts[r1].insert(r2);
                 conflicts[r2].insert(r1);
             }
@@ -174,7 +185,6 @@ std::string DealManager::SelectRule(std::string lastRejected) {
         bool compatible = true;
         for (auto& [_, deal] : deals) {
             for (auto activeRule : deal.rules) {
-
                 if (conflicts[activeRule].contains(&rule)) {
                     compatible = false;
                 }
@@ -193,7 +203,7 @@ std::string DealManager::SelectRule(std::string lastRejected) {
 
     SKSE::log::info("SelectRule: Selected {}", rule->GetName());
 
-    return rule->GetPath();
+    return rule->GetId();
 }
 
 bool DealManager::CanEnableRule(std::string ruleName) {
@@ -214,6 +224,7 @@ int DealManager::ActivateRule(std::string path) {
     if (path == ExtendRulePath) {
         log::info("ActivateRule: extending deal");
         std::vector<std::string> activeDeals;
+
         for (auto& [name, deal] : deals) {
             activeDeals.push_back(name);
         }
@@ -249,8 +260,7 @@ int DealManager::ActivateRule(std::string path) {
             chosen = candidateDeals[index];
         }
 
-        auto global = rule->GetGlobal();
-        global->value = 3;
+        rule->Activate();
         chosen->UpdateTimer();
 
         chosen->rules.push_back(rule);
@@ -265,8 +275,7 @@ int DealManager::ActivateRule(std::string path) {
 void DealManager::RemoveDeal(std::string name) {
     if (auto deal = GetDealByName(name)) {
         for (auto& rule : deal->rules) {
-            if (rule->IsEnabled())
-                rule->GetGlobal()->value = 1; // reset to 1 only if enabled or running
+            if (rule->IsActive()) rule->Enable();
         }
     }
 
@@ -276,7 +285,7 @@ void DealManager::RemoveDeal(std::string name) {
 void DealManager::ResetAllDeals() {
     for (auto [_, deal] : deals) {
         for (auto& rule : deal.rules) {
-            if (rule->IsEnabled()) rule->GetGlobal()->value = 1;  // reset to 1 only if enabled or running
+            if (rule->IsActive()) rule->Enable();
         }
     }
 
@@ -317,17 +326,28 @@ std::string DealManager::GetRuleName(std::string path) {
         return "";
 }
 
-std::string DealManager::GetRuleDesc(std::string path) {
-    if (Rule* rule = GetRuleByPath(path))
-        return rule->GetDesc();
-    else
+std::string DealManager::GetRuleHint(std::string path) {
+    log::info("GetRuleHint: {}", path);
+
+    if (Rule* rule = GetRuleByPath(path)) {
+        log::info("GetRuleHint: {} found", path);
+
+        return rule->GetHint();
+    } else
         return "";
 }
 
-std::string DealManager::GetRuleHint(std::string path) {
-    if (Rule* rule = GetRuleByPath(path))
-        return rule->GetHint();
-    else
+std::string DealManager::GetRuleInfo(std::string path) {
+    if (Rule* rule = GetRuleByPath(path)) {
+        return rule->GetInfo();
+    } else
+        return "";
+}
+
+std::string DealManager::GetRulePack(std::string path) {
+    if (Rule* rule = GetRuleByPath(path)) {
+        return rule->GetPack()->GetName();
+    } else
         return "";
 }
 
@@ -361,7 +381,7 @@ std::vector<std::string> DealManager::GetDealRules(std::string name) {
 
         if (!rules.empty()) {
             ruleNames.reserve(rules.size());
-            for (auto& rule : rules) ruleNames.push_back(rule->GetPath());
+            for (auto& rule : rules) ruleNames.push_back(rule->GetId());
         } else {
             log::info("GetDealRules: no rules in deal {}", name);
         }
@@ -372,29 +392,41 @@ std::vector<std::string> DealManager::GetDealRules(std::string name) {
     return ruleNames;
 }
 
-std::vector<std::string> DealManager::GetGroupNames() { 
-    std::vector<std::string> groupNames; 
+std::vector<std::string> DealManager::GetPackNames() { 
+    std::vector<std::string> packNames; 
 
-    for (auto& [name, deals] : ruleGroups) {
-        groupNames.push_back(name);
+    for (auto& [name, deals] : packs) {
+        packNames.push_back(name);
     }
 
-    return groupNames;
+    return packNames;
 }
 
-std::vector<std::string> DealManager::GetGroupRules(std::string groupName) { 
-    std::vector<Rule*>& rules = ruleGroups[groupName];
-
+std::vector<std::string> DealManager::GetPackRules(std::string name) {
+    log::info("GetPackRules: getting rules for pack {}", name);
     std::vector<std::string> ruleNames;
-
-    if (!rules.empty()) {
-        ruleNames.reserve(rules.size());
-        for (auto& key : rules) ruleNames.push_back(key->GetPath());
+        
+    if (auto pack = GetPackByName(name)) {
+        log::info("GetPackRules: fetched pack");
+        auto& rules = pack->GetRules();
+        for (auto& rule : rules) ruleNames.push_back(rule->GetId());
+    } else {
+        log::info("GetPackRules: could not find pack");
     }
 
     return ruleNames;
 }
 
+RE::TESQuest* DealManager::GetPackQuest(std::string name) {
+    log::info("GetPackQuest: getting quest for {}", name);
+    
+    if (auto pack = GetPackByName(name)) {
+        log::info("GetPackQuest: quest = {}", pack->GetQuest() != nullptr);
+        return pack->GetQuest();
+    } else {
+        return nullptr;
+    }
+}
 std::vector<std::string> DealManager::GetEnslavementRules() {
     std::vector<std::string> ruleNames;
 
@@ -442,6 +474,15 @@ std::string DealManager::GetBuyoutMenuResult() {
     return chosenDeal;
 }
 
+void DealManager::SetRuleValid(std::string path, bool valid) {
+    SKSE::log::info("SetRuleValid: {} {}", path, valid);
+    if (auto rule = GetRuleByPath(path)) {
+        rule->valid = valid;
+        if (!valid) rule->Disable();
+    }else
+        SKSE::log::info("SetRuleValid: could not set valid for {}", path);
+}
+
 std::string DealManager::GetNextDealName() {
     for (auto& name : allDealNames)
         if (!deals.count(name)) return name;
@@ -460,6 +501,10 @@ Deal* DealManager::GetDealByName(std::string name) {
     return deals.count(name) ? &deals[name] : nullptr; 
 }
 
+Pack* DealManager::GetPackByName(std::string name) {
+    name = Lowercase(name);
+    return packs.count(name) ? &packs[name] : nullptr;
+}
 
 void DealManager::OnRevert(SerializationInterface*) {
     std::unique_lock lock(GetSingleton()._lock);

@@ -11,9 +11,8 @@ namespace DFF {
     public:
         [[nodiscard]] static DealManager& GetSingleton() noexcept;
 
-        void InitDeals();
+        void Init();
 
-        void InitQuests();
 
         std::string SelectRule(std::string lastRejected);
 
@@ -39,9 +38,11 @@ namespace DFF {
         
         std::string GetRuleName(std::string path);
 
-        std::string GetRuleDesc(std::string path);
-
         std::string GetRuleHint(std::string path);
+        
+        std::string GetRuleInfo(std::string path);
+        
+        std::string GetRulePack(std::string path);
         
         int GetDealCost(std::string name);
 
@@ -49,9 +50,9 @@ namespace DFF {
 
         std::vector<std::string> GetDealRules(std::string name);
 
-        std::vector<std::string> GetGroupNames();
+        std::vector<std::string> GetPackNames();
 
-        std::vector<std::string> GetGroupRules(std::string groupName);
+        std::vector<std::string> GetPackRules(std::string PackName);
 
         std::vector<std::string> GetEnslavementRules();
 
@@ -60,6 +61,10 @@ namespace DFF {
         [[nodiscard]] inline bool IsBuyoutSelected() { return menuChosen; }
         
         std::string GetBuyoutMenuResult();
+
+        void SetRuleValid(std::string path, bool valid);
+
+        RE::TESQuest* GetPackQuest(std::string path);
 
         static void OnRevert(SKSE::SerializationInterface*);
 
@@ -72,12 +77,13 @@ namespace DFF {
 
         Rule* GetRuleByPath(std::string path);
         Deal* GetDealByName(std::string path);
+        Pack* GetPackByName(std::string path);
         std::string GetNextDealName();
         
         mutable std::mutex _lock;
 
         std::unordered_map<std::string, Rule> rules; // a list of all rules
-        std::unordered_map<std::string, std::vector<Rule*>> ruleGroups; // what add on each rule is from
+        std::unordered_map<std::string, Pack> packs; // what add on each rule is from
 
         std::unordered_map<std::string, Deal> deals;  // all active deals containing rules
 

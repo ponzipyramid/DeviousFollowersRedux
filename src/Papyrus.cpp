@@ -20,6 +20,8 @@ namespace {
     
     void RemoveDeal(StaticFunctionTag*, std::string name) { DealManager::GetSingleton().RemoveDeal(name); }
     
+    void SetRuleValid(StaticFunctionTag*, std::string name, bool valid) { DealManager::GetSingleton().SetRuleValid(name, valid); }
+    
     void ResetAllDeals(StaticFunctionTag*) {
         DealManager::GetSingleton().ResetAllDeals();
     }
@@ -39,12 +41,16 @@ namespace {
         return DealManager::GetSingleton().GetRuleName(path);
     }
 
-    std::string GetRuleDesc(StaticFunctionTag*, std::string path) {
-        return DealManager::GetSingleton().GetRuleDesc(path);
-    }
-
     std::string GetRuleHint(StaticFunctionTag*, std::string path) {
         return DealManager::GetSingleton().GetRuleHint(path);
+    }
+
+    std::string GetRuleInfo(StaticFunctionTag*, std::string path) {
+        return DealManager::GetSingleton().GetRuleInfo(path);
+    }
+
+    std::string GetRulePack(StaticFunctionTag*, std::string path) {
+        return DealManager::GetSingleton().GetRulePack(path);
     }
 
     bool CanEnableRule(StaticFunctionTag*, std::string path) { 
@@ -113,12 +119,16 @@ namespace {
         return refrs; 
     }
 
-    std::vector<std::string> GetGroupNames(StaticFunctionTag*) {
-        return DealManager::GetSingleton().GetGroupNames();
+    std::vector<std::string> GetPackNames(StaticFunctionTag*) {
+        return DealManager::GetSingleton().GetPackNames();
     }
 
-    std::vector<std::string> GetGroupRules(StaticFunctionTag*, std::string groupName) {
-        return DealManager::GetSingleton().GetGroupRules(groupName);
+    std::vector<std::string> GetPackRules(StaticFunctionTag*, std::string packName) {
+        return DealManager::GetSingleton().GetPackRules(packName);
+    }
+
+    RE::TESQuest* GetPackQuest(StaticFunctionTag*, std::string packName) {
+        return DealManager::GetSingleton().GetPackQuest(packName);
     }
 
     void ShowBuyoutMenu(StaticFunctionTag*) { 
@@ -153,17 +163,22 @@ bool DFF::RegisterDealManager(IVirtualMachine* vm) {
     vm->RegisterFunction("GetDealRules", PapyrusClass, GetDealRules);
     vm->RegisterFunction("GetRuleGlobal", PapyrusClass, GetRuleGlobal);
     vm->RegisterFunction("GetRuleName", PapyrusClass, GetRuleName);
+    vm->RegisterFunction("GetRuleHint", PapyrusClass, GetRuleHint);
+    vm->RegisterFunction("GetRuleInfo", PapyrusClass, GetRuleInfo);
+    vm->RegisterFunction("GetRulePack", PapyrusClass, GetRulePack);
     vm->RegisterFunction("CanEnableRule", PapyrusClass, CanEnableRule);
     vm->RegisterFunction("CanDisableRule", PapyrusClass, CanDisableRule);
     vm->RegisterFunction("GetEnslavementRules", PapyrusClass, GetEnslavementRules);
     vm->RegisterFunction("GetDealCost", PapyrusClass, GetDealCost);
     vm->RegisterFunction("ExtendDeal", PapyrusClass, ExtendDeal);
     vm->RegisterFunction("GetInventoryNamedObjects", PapyrusClass, GetInventoryNamedObjects);
-    vm->RegisterFunction("GetGroupNames", PapyrusClass, GetGroupNames);
-    vm->RegisterFunction("GetGroupRules", PapyrusClass, GetGroupRules);
+    vm->RegisterFunction("GetPackNames", PapyrusClass, GetPackNames);
+    vm->RegisterFunction("GetPackRules", PapyrusClass, GetPackRules);
+    vm->RegisterFunction("GetPackQuest", PapyrusClass, GetPackQuest);
     vm->RegisterFunction("IsBuyoutSelected", PapyrusClass, IsBuyoutSelected);
     vm->RegisterFunction("ShowBuyoutMenuInternal", PapyrusClass, ShowBuyoutMenu);
     vm->RegisterFunction("GetBuyoutMenuResult", PapyrusClass, GetBuyoutMenuResult);
+    vm->RegisterFunction("SetRuleValid", PapyrusClass, SetRuleValid);
     
     // Device functions
     vm->RegisterFunction("GetRandomDeviceByKeyword", PapyrusDeviceClass, GetRandomDeviceByKeyword);

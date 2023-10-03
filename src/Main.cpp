@@ -122,7 +122,6 @@ namespace {
             switch (message->type) {
                 // Skyrim lifecycle events.
                 case MessagingInterface::kPostLoad: // Called after all plugins have finished running SKSEPlugin_Load.
-                    DFF::DealManager::GetSingleton().InitDeals();
                     // It is now safe to do multithreaded operations, or operations against other plugins.
                     break;
                 case MessagingInterface::kPostPostLoad: // Called after all kPostLoad message handlers have run.
@@ -131,7 +130,7 @@ namespace {
                     break;
                 case MessagingInterface::kDataLoaded: // All ESM/ESL/ESP plugins have loaded, main menu is now active.
                     // It is now safe to access form data.
-                    DFF::DealManager::GetSingleton().InitQuests();
+                    DFF::DealManager::GetSingleton().Init();
                     DFF::DeviceManager::GetSingleton().Init();
                     break;
                 // Skyrim game events.

@@ -39,7 +39,7 @@ int Deal::GetCost() {
 
     int multiplier = 1;
     for (auto& rule : rules) {
-        if (rule->GetPath() == "devious followers continued/expensive") {
+        if (rule->GetId() == "devious followers continued/expensive") {
             price += multiplier * Settings::GetDailyDebt() * Settings::GetDeepDebtDifficulty();
             break;
         }
@@ -55,7 +55,7 @@ void Deal::Serialize(SKSE::SerializationInterface* serde) {
 
     Serialization::Write<std::size_t>(serde, rules.size());
     for (auto rule : rules) {
-        Serialization::Write<std::string>(serde, rule->GetPath());
+        Serialization::Write<std::string>(serde, rule->GetId());
     }
 }
 
