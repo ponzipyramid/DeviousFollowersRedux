@@ -56,7 +56,7 @@ void DealManager::Init() {
     RE::TESDataHandler* handler = RE::TESDataHandler::GetSingleton();
     std::vector<std::string> ruleIds;
 
-    std::string dir("Data\\SKSE\\Plugins\\Devious Followers Redux\\Addons");
+    std::string dir("Data\\SKSE\\Plugins\\Devious Followers Redux\\Packs");
 
     if (!IsDirValid(dir)) {
         log::info("Init: DFR Directory not valid");
@@ -123,6 +123,9 @@ void DealManager::Init() {
                                 log::info("Init: Registered Rule {}", rule.GetName());
                                 rules[rule.GetId()] = rule;
                                 packs[packId].AddRule(&rules[rule.GetId()]);
+                                ruleIds.push_back(rule.GetId());
+                            } else {
+                                log::info("Init: Rule {} is invalid", rule.GetName());
                             }
                         } else
                             log::error("Init Error - Failed to read file");
@@ -151,7 +154,6 @@ void DealManager::Init() {
         for (int j = i + 1; j < ruleIds.size(); j++) {
             r2 = &rules[ruleIds[j]];
             if (r1->ConflictsWith(r2)) {
-                log::info("Init: Conflict - {} and {}", r1->GetId(), r2->GetId());
                 conflicts[r1].insert(r2);
                 conflicts[r2].insert(r1);
             }
@@ -160,18 +162,26 @@ void DealManager::Init() {
 }
 
 std::string DealManager::SelectRule(std::string lastRejected) {
-    std::vector<Rule*> candidateRules;
+    log::info("SelectRule: Start");
+    std::unordered_set<Rule*> candidateRules;
 
     Rule* lastRejectedRule = nullptr;
     Rule* extendRule = nullptr;
+    
+    int maxSeverity = 1;
+    for (auto& [_, deal] : deals) {
+        maxSeverity = std::max(maxSeverity, (int) deal.rules.size());
+    }
 
-    for (auto& [path, rule] : rules) {
+    std::unordered_map<int, std::vector<Rule*>> stratifiedRules;
+    
+    for (auto& [path, rule] : rules) {        
         if (path == ExtendRulePath) {
             extendRule = &rule;
             continue;
         }
 
-        if (path == lastRejected) {
+        if (path == lastRejected && !rule.IsActive()) {
             lastRejectedRule = &rule;
             continue;
         }
@@ -180,30 +190,54 @@ std::string DealManager::SelectRule(std::string lastRejected) {
             continue; 
         }
 
-        // TODO: filter on severity
+        rule.ResetIfSelected();
 
         bool compatible = true;
         for (auto& [_, deal] : deals) {
             for (auto activeRule : deal.rules) {
                 if (conflicts[activeRule].contains(&rule)) {
                     compatible = false;
+                    break;
                 }
+            }
+            if (!compatible) {
+                break;
             }
         }
 
-        if (compatible) candidateRules.push_back(&rule);
+        if (compatible) {
+            if (rule.GetLevel() <= maxSeverity) {
+                candidateRules.insert(&rule);
+            } else {
+                stratifiedRules[rule.GetLevel()].push_back(&rule); 
+            }
+        }
     }
 
-    if (candidateRules.size() == 1 && lastRejectedRule) candidateRules.push_back(lastRejectedRule);
+    int i = maxSeverity + 1;
+    while (candidateRules.empty() && i < stratifiedRules.size()) {
+        for (auto rule : stratifiedRules[i]) {
+            candidateRules.insert(rule);
+        }
 
-    if (deals.size() > 0 || candidateRules.empty()) candidateRules.push_back(extendRule); 
+        i++;
+    }
+    
+    if (candidateRules.empty() && lastRejectedRule) candidateRules.insert(lastRejectedRule);
+    if (deals.size() > 0 && candidateRules.empty()) candidateRules.insert(extendRule); 
 
     int index = PickRandom(candidateRules.size() - 1);
-    auto rule = candidateRules[index];
+    
+    log::info("SelectRule: Index chosen = {} out of {}", index, candidateRules.size());
 
-    SKSE::log::info("SelectRule: Selected {}", rule->GetName());
+    auto selectedRule = std::begin(candidateRules);
+    std::advance(selectedRule, index);
 
-    return rule->GetId();
+    log::info("SelectRule: Selected {}", (*selectedRule)->GetName());
+
+    (*selectedRule)->SetSelected();
+
+    return (*selectedRule)->GetId();
 }
 
 bool DealManager::CanEnableRule(std::string ruleName) {
@@ -245,9 +279,10 @@ int DealManager::ActivateRule(std::string path) {
             }
         }
 
-        Deal* chosen;
-        if (candidateDeals.empty()) { 
-            // create new one if none are open
+        Deal* chosen = nullptr;
+        int index = PickRandom(candidateDeals.size());
+        log::info("ActivateRule: index = {} out of {}", index, deals.size());
+        if (candidateDeals.empty() || index == candidateDeals.size()) { 
             auto name = GetNextDealName();
             Deal deal(name);
 
@@ -256,14 +291,18 @@ int DealManager::ActivateRule(std::string path) {
             deals[key] = deal;
             chosen = GetDealByName(key);
         } else {
-            int index = PickRandom(candidateDeals.size());
             chosen = candidateDeals[index];
         }
+
+        log::info("ActivateRule: selected deal {} {}", chosen->GetName(), chosen->rules.size());
 
         rule->Activate();
         chosen->UpdateTimer();
 
         chosen->rules.push_back(rule);
+
+        log::info("ActivateRule: num rules = {} num deals = {}", chosen->rules.size(), deals.size());
+
         return chosen->rules.size();
     } else {
         log::error("ActivateRule: Invalid id {} given", path);
@@ -475,7 +514,6 @@ std::string DealManager::GetBuyoutMenuResult() {
 }
 
 void DealManager::SetRuleValid(std::string path, bool valid) {
-    SKSE::log::info("SetRuleValid: {} {}", path, valid);
     if (auto rule = GetRuleByPath(path)) {
         rule->valid = valid;
         if (!valid) rule->Disable();
@@ -485,7 +523,7 @@ void DealManager::SetRuleValid(std::string path, bool valid) {
 
 std::string DealManager::GetNextDealName() {
     for (auto& name : allDealNames)
-        if (!deals.count(name)) return name;
+        if (!deals.count(Lowercase(name))) return name;
 
     log::error("GetNextDealName - Failed to find open name");
     return "";

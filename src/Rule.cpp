@@ -46,7 +46,6 @@ bool Rule::RulesCompatible(Rule* r1, Rule* r2) {
             if (r2->slots.contains(slot)) return false;
         }
     }
-
     return true;
 }
 

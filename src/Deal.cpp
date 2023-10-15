@@ -6,7 +6,7 @@
 using namespace DFF;
 
 void Deal::UpdateTimer() {
-    timer =  + Settings::GetDealsBaseDays();
+    timer += Settings::GetDealsBaseDays();
 }
 
 void Deal::Extend(double by) {
@@ -39,7 +39,7 @@ int Deal::GetCost() {
 
     int multiplier = 1;
     for (auto& rule : rules) {
-        if (rule->GetId() == "devious followers continued/expensive") {
+        if (rule->GetId() == "devious followers/expensive") {
             price += multiplier * Settings::GetDailyDebt() * Settings::GetDeepDebtDifficulty();
             break;
         }

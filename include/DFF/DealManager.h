@@ -13,7 +13,6 @@ namespace DFF {
 
         void Init();
 
-
         std::string SelectRule(std::string lastRejected);
 
         bool CanEnableRule(std::string rule);

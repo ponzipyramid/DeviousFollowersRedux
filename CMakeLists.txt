@@ -25,6 +25,7 @@ set(headers
         include/DFF/Deal.h
         include/DFF/Rule.h
         include/DFF/Pack.h
+        include/DFF/RulePath.h
         include/DFF/Settings.h
         include/DFF/DealManager.h
         include/Script.hpp

@@ -22,8 +22,14 @@ namespace DFF {
         [[nodiscard]] inline const bool CanDisable() { return !preventDisable && HasGlobal(); }
         [[nodiscard]] inline const bool HasGlobal() { return statusGlobal != nullptr; }
         [[nodiscard]] inline const bool IsEnabled() { return statusGlobal->value > 0; }
+        [[nodiscard]] inline const bool IsSelected() { return statusGlobal->value == 2; }
+        [[nodiscard]] inline void SetSelected() { statusGlobal->value = 2; }
+        [[nodiscard]] inline void ResetIfSelected() {
+            if (IsSelected()) statusGlobal->value = 1;
+        }
         [[nodiscard]] inline const bool IsActive() { return statusGlobal->value == 3; }
         [[nodiscard]] inline RE::TESGlobal* GetGlobal() { return statusGlobal; }
+        [[nodiscard]] inline int GetLevel() { return level; }
 
         void Enable();
         void Disable();
