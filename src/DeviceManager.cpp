@@ -44,7 +44,7 @@ void DeviceManager::Init() {
 RE::TESObjectARMO* DeviceManager::GetRandomDeviceByKeyword(RE::Actor* actor, RE::BGSKeyword* kwd) { 
     auto devices = lib.GetDevicesByCategory(kwd->GetFormEditorID());
     
-    SKSE::log::info("{} Devices Fetched: {}", kwd->GetFormEditorID(), devices.size());
+    SKSE::log::info("GetRandomDeviceByKeyword: {} Devices Fetched: {}", kwd->GetFormEditorID(), devices.size());
 
     std::vector<RE::BGSKeyword*> badKwds;
     badKwds.push_back(kwd);
@@ -60,6 +60,7 @@ RE::TESObjectARMO* DeviceManager::GetRandomDeviceByKeyword(RE::Actor* actor, RE:
 
             std::string kwdName(itemKwd->GetFormEditorID());
             if (kwdName.starts_with("zad_Devious")) {
+                SKSE::log::info("GetRandomDeviceByKeyword: exclude kwd {}", kwdName);
                 badKwds.push_back(itemKwd);
             }
         }
@@ -97,13 +98,23 @@ RE::TESObjectARMO* DeviceManager::GetRandomDeviceByKeyword(RE::Actor* actor, RE:
 
 RE::TESObjectARMO* DeviceManager::GetWornItemByKeyword(RE::Actor* actor, RE::BGSKeyword* kwd) {
 
-    SKSE::log::info("Attempting to find kwd {} on {}", kwd->GetFormEditorID(), actor->GetFormEditorID());
+    SKSE::log::info("GetWornItemByKeyword: find kwd {} on {}", kwd->GetFormEditorID(),
+                    actor->GetActorBase()->GetName());
 
-    RE::TESObjectREFR::InventoryItemMap itemMap = actor->GetInventory();
-    for (auto& [item, value] : itemMap) {
+    auto itemMap = actor->GetInventory();
+    for (auto& [item, _] : itemMap) {
+        log::info("GetWornItemByKeyword: processing {} {}", item->GetName(), item->GetFormID());
         auto refr = item->As<RE::TESObjectARMO>();
-        if (refr && refr->HasKeyword(kwd)) return refr;
+        if (auto device = lib.GetDeviceByArmor(refr)) {
+            if (device->keywordNames.contains(kwd->GetFormEditorID())) {
+                SKSE::log::info("Found Item: {}", refr->GetName());
+                return refr;
+            }
+        } else {
+            log::info("GetWornItemByKeyword: {} is not an inventory device {}", item->GetName(), refr != nullptr);
+        }
     }
-
+    SKSE::log::info("GetWornItemByKeyword: could not find kwd {} on {}", kwd->GetFormEditorID(),
+                    actor->GetActorBase()->GetName());
     return nullptr;
 }

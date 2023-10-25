@@ -20,7 +20,7 @@ namespace DFF {
         bool CanDisableRule(std::string rule);
 
         int ActivateRule(std::string name);
-
+        
         void RemoveDeal(std::string name);
 
         void ResetAllDeals();
@@ -78,7 +78,10 @@ namespace DFF {
         Deal* GetDealByName(std::string path);
         Pack* GetPackByName(std::string path);
         std::string GetNextDealName();
-        
+        int CalculateRuleWeight(Rule* rule, int targetSeverity);
+        int CalculateTargetSeverity();
+
+
         mutable std::mutex _lock;
 
         std::unordered_map<std::string, Rule> rules; // a list of all rules
@@ -86,7 +89,8 @@ namespace DFF {
 
         std::unordered_map<std::string, Deal> deals;  // all active deals containing rules
 
-        std::unordered_map<Rule*, std::unordered_set<Rule*>> conflicts; // every conflict between every rule generated on startup
+        std::unordered_map<Rule*, std::unordered_set<Rule*>> conflicts; // every conflict between every rule
+        std::unordered_map<Rule*, std::unordered_set<Rule*>> predecessors; // every rule's neighbors used for rule pathing
 
         bool menuChosen;
         std::string chosenDeal;

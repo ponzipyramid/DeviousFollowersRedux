@@ -23,10 +23,9 @@ namespace DFF {
         [[nodiscard]] inline const bool HasGlobal() { return statusGlobal != nullptr; }
         [[nodiscard]] inline const bool IsEnabled() { return statusGlobal->value > 0; }
         [[nodiscard]] inline const bool IsSelected() { return statusGlobal->value == 2; }
+        [[nodiscard]] inline const bool CanRuleIdReplace(std::string id) { return canReplace.contains(id); }
         [[nodiscard]] inline void SetSelected() { statusGlobal->value = 2; }
-        [[nodiscard]] inline void ResetIfSelected() {
-            if (IsSelected()) statusGlobal->value = 1;
-        }
+
         [[nodiscard]] inline const bool IsActive() { return statusGlobal->value == 3; }
         [[nodiscard]] inline RE::TESGlobal* GetGlobal() { return statusGlobal; }
         [[nodiscard]] inline int GetLevel() { return level; }
@@ -34,6 +33,7 @@ namespace DFF {
         void Enable();
         void Disable();
         void Activate();
+        void Reset();
         bool ConflictsWith(Rule* other);
         bool Init(RE::TESDataHandler* handler);
 
@@ -55,6 +55,9 @@ namespace DFF {
             
             ar <=> articuno::kv(preventDisable, "preventDisable");
             ar <=> articuno::kv(requirements, "requirements");
+           
+            ar <=> articuno::kv(canReplace, "canReplace");
+            ar <=> articuno::kv(exclude, "exclude");
         }
 
         RE::FormID formId;
@@ -71,11 +74,15 @@ namespace DFF {
         std::unordered_set<int> slots;
         int level;
 
+        std::unordered_set<std::string> exclude;
+
         RE::TESGlobal* statusGlobal = nullptr;
 
         bool preventDisable = false;
         bool reqsMet = true;
         std::vector<std::string> requirements;
+
+        std::unordered_set<std::string> canReplace;
 
         friend class articuno::access;
     };

@@ -1,6 +1,7 @@
 #include <SKSE/SKSE.h>
 #include <DFF/DealManager.h>
 #include <DFF/Deal.h>
+#include <DFF/RulePath.h>
 #include "DFF/Settings.h"
 #include <Config.h>
 #include "UI.hpp"
@@ -8,6 +9,7 @@
 
 #include <articuno/archives/ryml/ryml.h>
 
+#include <algorithm>
 #include <random>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -55,6 +57,8 @@ bool IsDirValid(std::string dir) {
 void DealManager::Init() {
     RE::TESDataHandler* handler = RE::TESDataHandler::GetSingleton();
     std::vector<std::string> ruleIds;
+    std::vector<RulePath> paths;
+    std::unordered_map<RE::FormID, std::string> seenGlobals;
 
     std::string dir("Data\\SKSE\\Plugins\\Devious Followers Redux\\Packs");
 
@@ -101,7 +105,6 @@ void DealManager::Init() {
         }
 
         std::string rulesDir = dir + "\\" + packName + "\\Rules";
-
         if (IsDirValid(rulesDir)) {
             for (const auto& p : std::filesystem::directory_iterator(rulesDir)) {
                 auto fileName = p.path();
@@ -120,6 +123,16 @@ void DealManager::Init() {
                             ar >> rule;
 
                             if (rule.Init(handler)) {
+                                auto globalId = rule.GetGlobal()->GetFormID();
+                                
+                                if (seenGlobals.count(globalId)) {
+                                    log::info("Init: duplicate global found {} and {}", rule.GetId(),
+                                              seenGlobals[globalId]);
+                                    continue;
+                                }
+
+                                seenGlobals[globalId] = rule.GetId();
+
                                 log::info("Init: Registered Rule {}", rule.GetName());
                                 rules[rule.GetId()] = rule;
                                 packs[packId].AddRule(&rules[rule.GetId()]);
@@ -128,7 +141,7 @@ void DealManager::Init() {
                                 log::info("Init: Rule {} is invalid", rule.GetName());
                             }
                         } else
-                            log::error("Init Error - Failed to read file");
+                            log::error("Init Error - Failed to read rule file");
                     } catch (const std::exception& e) {
                         issue = true;
                         log::error("Init: Error - {}", e.what());
@@ -140,9 +153,43 @@ void DealManager::Init() {
         } else {
             log::info("Init: No rules found");
         }
+
+        std::string pathsDir = dir + "\\" + packName + "\\Paths";
+        if (IsDirValid(pathsDir)) {
+            for (const auto& p : std::filesystem::directory_iterator(pathsDir)) {
+                auto fileName = p.path();
+
+                if (fileName.extension() == ext1 || fileName.extension() == ext2) {
+                    const auto name = fileName.stem().string();
+
+                    RulePath path(name);
+                    bool issue = false;
+
+                    try {
+                        std::ifstream inputFile(fileName.string());
+                        if (inputFile.good()) {
+                            yaml_source ar(inputFile);
+                            ar >> path;
+                        } else
+                            log::error("Init Error - Failed to read path file");
+                    } catch (const std::exception& e) {
+                        issue = true;
+                        log::error("Init: Error - {}", e.what());
+                    }
+
+                    if (!issue && !path.GetRuleIds().empty()) {
+                        log::info("Init: Registered Path {}", path.GetName());
+                        paths.push_back(path);
+                    }
+                }
+            }
+        } else {
+            log::info("Init: No rules found");
+        }
     }
 
     log::info("Init: Registered {} pack(s)", packs.size());
+    log::info("Init: Registered {} paths(s)", paths.size());
     log::info("Init: Registered {} rule(s)", rules.size());
 
     Rule* r1 = nullptr;
@@ -154,29 +201,56 @@ void DealManager::Init() {
         for (int j = i + 1; j < ruleIds.size(); j++) {
             r2 = &rules[ruleIds[j]];
             if (r1->ConflictsWith(r2)) {
+                log::info("Init: Conflict between {} and {}", r1->GetId(), r2->GetId());
                 conflicts[r1].insert(r2);
                 conflicts[r2].insert(r1);
+            }
+        }
+    }
+
+    for (auto& path : paths) {
+        std::vector<std::string> ruleIds = path.GetRuleIds();
+
+        for (auto r1Id : ruleIds) {
+            if (auto rule1 = GetRuleByPath(r1Id)) {
+                for (auto r2Id : ruleIds) {
+                    if (r1Id == r2Id) continue;
+
+                    if (auto rule2 = GetRuleByPath(r2Id)) {
+                        if (rule2->GetLevel() < rule1->GetLevel()) {
+                            log::info("Init: {} is a predecessor of {}", r2Id, r1Id);
+                            predecessors[rule1].insert(rule2);
+                        }
+                    }
+                }
+            } else {
+                log::info("Init: {} in path {} not found", r1Id, path.GetName());
             }
         }
     }
 }
 
 std::string DealManager::SelectRule(std::string lastRejected) {
-    log::info("SelectRule: Start");
+    log::info("SelectRule: Start {}", lastRejected);
     std::unordered_set<Rule*> candidateRules;
 
     Rule* lastRejectedRule = nullptr;
     Rule* extendRule = nullptr;
-    
-    int maxSeverity = 1;
-    for (auto& [_, deal] : deals) {
-        maxSeverity = std::max(maxSeverity, (int) deal.rules.size());
-    }
 
     std::unordered_map<int, std::vector<Rule*>> stratifiedRules;
     
-    for (auto& [path, rule] : rules) {        
-        if (path == ExtendRulePath) {
+    for (auto& [path, rule] : rules) {   
+        
+        if (!rule.IsEnabled()) {
+            continue;
+        }
+
+        if (!rule.IsActive()) {
+            log::info("SelectRule: resetting {}", rule.GetId());
+            rule.Reset();
+        }
+
+        if (Lowercase(path) == Lowercase(ExtendRulePath)) {
             extendRule = &rule;
             continue;
         }
@@ -186,16 +260,11 @@ std::string DealManager::SelectRule(std::string lastRejected) {
             continue;
         }
 
-        if (!rule.IsEnabled()) {
-            continue; 
-        }
-
-        rule.ResetIfSelected();
-
         bool compatible = true;
         for (auto& [_, deal] : deals) {
             for (auto activeRule : deal.rules) {
-                if (conflicts[activeRule].contains(&rule)) {
+                if (conflicts[activeRule].contains(&rule) && !rule.CanRuleIdReplace(activeRule->GetId())) {
+                    log::info("SelectRule: excluding {} due to active rule {}", path, activeRule->GetId());
                     compatible = false;
                     break;
                 }
@@ -206,38 +275,39 @@ std::string DealManager::SelectRule(std::string lastRejected) {
         }
 
         if (compatible) {
-            if (rule.GetLevel() <= maxSeverity) {
-                candidateRules.insert(&rule);
-            } else {
-                stratifiedRules[rule.GetLevel()].push_back(&rule); 
-            }
+            log::info("SelectRule: adding {} to available pool", rule.GetId());
+            candidateRules.insert(&rule);
         }
-    }
-
-    int i = maxSeverity + 1;
-    while (candidateRules.empty() && i < stratifiedRules.size()) {
-        for (auto rule : stratifiedRules[i]) {
-            candidateRules.insert(rule);
-        }
-
-        i++;
     }
     
     if (candidateRules.empty() && lastRejectedRule) candidateRules.insert(lastRejectedRule);
     if (deals.size() > 0 && candidateRules.empty()) candidateRules.insert(extendRule); 
 
-    int index = PickRandom(candidateRules.size() - 1);
+    std::vector<Rule*> finalRules; 
+    finalRules.reserve(candidateRules.size());
     
-    log::info("SelectRule: Index chosen = {} out of {}", index, candidateRules.size());
+    std::vector<int> ruleWeights;
+    ruleWeights.reserve(candidateRules.size());
+    
+    int targetSeverity = CalculateTargetSeverity();
+    log::info("CalculateTargetSeverity: {}", targetSeverity);
 
-    auto selectedRule = std::begin(candidateRules);
-    std::advance(selectedRule, index);
 
-    log::info("SelectRule: Selected {}", (*selectedRule)->GetName());
+    for (auto rule : candidateRules) {
+        finalRules.push_back(rule);
+        ruleWeights.push_back(CalculateRuleWeight(rule, targetSeverity));
+    }
 
-    (*selectedRule)->SetSelected();
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::discrete_distribution<> d(ruleWeights.begin(), ruleWeights.end());
+    Rule* selectedRule = finalRules[d(gen)];
+        
+    log::info("SelectRule: Selected {}", selectedRule->GetName());
 
-    return (*selectedRule)->GetId();
+    selectedRule->SetSelected();
+
+    return selectedRule->GetId();
 }
 
 bool DealManager::CanEnableRule(std::string ruleName) {
@@ -272,29 +342,52 @@ int DealManager::ActivateRule(std::string path) {
     if (auto rule = GetRuleByPath(path)) {
         log::info("ActivateRule: activating {}", path);
 
+        Deal* chosen = nullptr;
+        int replaceAt = -1;
         std::vector<Deal*> candidateDeals;
         for (auto& [name, deal] : deals) {
             if (deal.IsOpen()) {
                 candidateDeals.push_back(&deal);
             }
+            for (int i = 0; i < deal.rules.size(); i++) {
+                auto activeRule = deal.rules[i];
+
+                if (rule->CanRuleIdReplace(activeRule->GetId())) {
+                    chosen = &deal;
+                    replaceAt = i;
+                    break;
+                }
+            }
+
+            if (chosen) {
+                break;
+            }
         }
 
-        Deal* chosen = nullptr;
-        int index = PickRandom(candidateDeals.size());
-        log::info("ActivateRule: index = {} out of {}", index, deals.size());
-        if (candidateDeals.empty() || index == candidateDeals.size()) { 
-            auto name = GetNextDealName();
-            Deal deal(name);
+        if (chosen && replaceAt >= 0) {
+            auto toReplace = chosen->rules[replaceAt];
 
-            auto key = Lowercase(name);
+            log::info("ActivateRule: Replacing {} with {}", toReplace->GetId(), rule->GetId());
 
-            deals[key] = deal;
-            chosen = GetDealByName(key);
+            toReplace->Reset();
+            chosen->rules[replaceAt] = rule;
         } else {
-            chosen = candidateDeals[index];
-        }
+            int index = PickRandom(candidateDeals.size());
+            log::info("ActivateRule: index = {} out of {}", index, deals.size());
+            if (candidateDeals.empty() || index == candidateDeals.size()) {
+                auto name = GetNextDealName();
+                Deal deal(name);
 
-        log::info("ActivateRule: selected deal {} {}", chosen->GetName(), chosen->rules.size());
+                auto key = Lowercase(name);
+
+                deals[key] = deal;
+                chosen = GetDealByName(key);
+            } else {
+                chosen = candidateDeals[index];
+            }
+
+            log::info("ActivateRule: selected deal {} {}", chosen->GetName(), chosen->rules.size());
+        }
 
         rule->Activate();
         chosen->UpdateTimer();
@@ -312,13 +405,18 @@ int DealManager::ActivateRule(std::string path) {
 
 
 void DealManager::RemoveDeal(std::string name) {
+    log::info("RemoveDeal: {}", name);
     if (auto deal = GetDealByName(name)) {
         for (auto& rule : deal->rules) {
             if (rule->IsActive()) rule->Enable();
         }
-    }
+        log::info("RemoveDeal: removing {}", name);
+        deals.erase(Lowercase(name));
+        log::info("RemoveDeal: {} deals left", deals.size());
 
-    deals.erase(name);
+    } else {
+        log::info("RemoveDeal: {} not found", name);     
+    }
 }
 
 void DealManager::ResetAllDeals() {
@@ -332,11 +430,19 @@ void DealManager::ResetAllDeals() {
 }
 
 void DealManager::Pause() {
-    // TODO: cache everything and then reset everything
+    for (auto& [_, deal] : deals) {
+        for (auto rule : deal.rules) {
+            rule->Reset();
+        }
+    }
 }
 
 void DealManager::Resume() {
-    // TODO: Read and apply cached data
+    for (auto& [_, deal] : deals) {
+        for (auto rule : deal.rules) {
+            rule->Activate();
+        }
+    }
 }
 
 void DealManager::ExtendDeal(std::string name, double by) {
@@ -391,9 +497,13 @@ std::string DealManager::GetRulePack(std::string path) {
 }
 
 int DealManager::GetDealCost(std::string name) {
+    log::info("GetDealCost: {}", name);
     if (auto deal = GetDealByName(name)) {
+        auto cost = deal->GetCost();
+        log::info("GetDealCost: {} = {}", name, cost);
         return deal->GetCost();
     } else {
+        log::info("GetDealCost: {} not found", name);
         return 0;
     }
 }
@@ -527,6 +637,97 @@ std::string DealManager::GetNextDealName() {
 
     log::error("GetNextDealName - Failed to find open name");
     return "";
+}
+
+int DealManager::CalculateTargetSeverity() {
+    if (deals.empty()) return 1;
+
+    int targetSeverity = 1;
+
+    auto calcMode = Config::GetSingleton().GetTargetSeverityMode();
+
+    switch (calcMode) { 
+        case SeverityMode::Max: {
+
+            for (const auto& [_, deal] : deals) {
+                targetSeverity = std::max(targetSeverity, (int) deal.rules.size());
+            }
+
+            break;
+        }
+        case SeverityMode::Median: {
+            std::vector<int> counts;
+
+            for (const auto& [_, deal] : deals) {
+                counts.push_back(deal.rules.size());
+            }
+
+            int midpoint = counts.size() / 2;
+
+            std::nth_element(counts.begin(), counts.begin() + midpoint, counts.end());
+
+            targetSeverity = counts[midpoint];
+
+            break;
+        }
+        case SeverityMode::Mode: {
+            std::unordered_map<int, int> counts;
+            
+            int mode = 0;
+            for (auto& [_, deal] : deals) {
+                counts[deal.rules.size()]++;
+
+                if (mode < 1) {
+                    mode = 1;
+                } else if (mode < counts[deal.rules.size()]) {
+                    mode = deal.rules.size();
+                }
+            }
+
+            targetSeverity = mode;
+
+            break;
+        }
+    }
+
+    return std::clamp(targetSeverity, 1, 3);
+}
+
+int DealManager::CalculateRuleWeight(Rule* rule, int targetSeverity) {
+    auto config = Config::GetSingleton();
+
+    int willpower = Settings::GetWillpower();
+    
+    bool loWill = willpower <= config.GetLowWillpowerThreshold();
+    bool hiWill = willpower >= config.GetHighWillpowerThreshold();
+
+    int score = config.GetBaseScore();
+
+    if (rule->GetLevel() < targetSeverity) score += config.GetBelowThresholdBoost();
+    if (rule->GetLevel() == targetSeverity) score += config.GetExactThresholdBoost();
+
+    if (loWill && rule->GetLevel() > targetSeverity) score += config.GetLowWillpowerBoost();
+    if (hiWill && rule->GetLevel() < targetSeverity) score += config.GetHighWillpowerBoost(); 
+
+    bool appliedBoost = false;
+    for (auto& [_, deal] : deals) {
+        for (auto& other : deal.rules) {
+            if (predecessors[rule].contains(other)) {
+                score += config.GetPathBoost();
+                if (!config.GetApplyMultiplePathBoost()) {
+                    appliedBoost = true;
+                    break;
+                }
+            }
+        }
+        if (appliedBoost) break;
+    };
+
+    score = std::max(1, score);
+
+    log::info("CalculateRuleWeight: {} = {}", rule->GetId(), score);
+
+    return score;
 }
 
 Rule* DealManager::GetRuleByPath(std::string path) { 

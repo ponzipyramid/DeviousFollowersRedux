@@ -9,6 +9,7 @@ namespace DFF {
         inline RE::TESObjectARMO* GetArmor() { 
             return RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESObjectARMO>(formId, espName);
         }
+        std::unordered_set<std::string> keywordNames;
 
     private:
         articuno_deserialize(ar) { 
@@ -28,14 +29,10 @@ namespace DFF {
     class DeviceLibrary {
     public:
         inline std::vector<Device>& GetDevicesByCategory(std::string cat) {
-            int i = 0;
-            for (auto [key, val] : deviceCategories) {
-                i++;
-            }
-            SKSE::log::info("Number of categories {}", i);
-
             return deviceCategories[cat]; 
         }
+        inline Device* GetDeviceByArmor(RE::TESBoundObject* obj) { return obj ? devices[obj->GetFormID()] : nullptr; }
+
         inline bool IsValid(const Device* device) {
             return validDevices.contains(device->name);
         }
@@ -81,28 +78,35 @@ namespace DFF {
             };
 
             auto handler = RE::TESDataHandler::GetSingleton();
-            std::unordered_set<std::string> seen;
+            std::unordered_set<RE::FormID> seen;
 
             for (auto& [key, list] : deviceCategories) {
                 ar <=> articuno::kv(list, key);
 
+                deviceCategories[key] = list;
 
-                for (auto& device : list) {
-                    if (seen.contains(device.name)) continue;
+                auto& listDevices = deviceCategories[key];
+
+                for (auto& device : listDevices) {
+                    auto id = device.GetArmor()->GetFormID();
+
+                    device.keywordNames.insert(key);
                     
+                    if (seen.contains(id)) continue;
+
+                    devices[id] = &device;
+
                     for (auto& filter : filters) {
                         if (device.name.contains(filter)) {
                             validDevices.insert(device.name);
                         }
                     }
 
-                    seen.insert(device.name);
+                    seen.insert(id);
                 }
-
-                deviceCategories[key] = list;
             }
 
-            SKSE::log::info("{} devices registered", deviceCategories["zad_DeviousPiercingsNipple"].size());
+            SKSE::log::info("{} devices registered", devices.size());
             SKSE::log::info("{} devices are valid", validDevices.size());
         }
         std::vector<Device> zad_DeviousCollar;
@@ -141,6 +145,7 @@ namespace DFF {
         std::vector<Device> zad_DeviousElbowTie;
 
         std::vector<std::string> filters;
+        std::unordered_map<RE::FormID, Device*> devices;
         std::unordered_map<std::string, std::vector<Device>> deviceCategories;
         std::unordered_set<std::string> validDevices;
 

@@ -14,6 +14,10 @@ void Rule::Activate() {
     if (IsEnabled()) statusGlobal->value = 3;
 }
 
+void Rule::Reset() {
+    if (IsEnabled()) statusGlobal->value = 1;
+}
+
 bool Rule::Init(RE::TESDataHandler* handler) {
     if (pack->GetQuest() == nullptr) return false;
 
@@ -39,7 +43,7 @@ bool Rule::Init(RE::TESDataHandler* handler) {
 bool Rule::RulesCompatible(Rule* r1, Rule* r2) {
     if (r1->type == "naked" && r2->type == "naked") return false;
     if (r1->type == "bathe" && r2->type == "bathe") return false;
-    if (r1->type == "wear" && r2->type == "naked") return false;
+    if (r1->type == "wear" && r1->slots.contains(32) && r2->type == "naked") return false;
 
     if (r1->type == "wear" && r2->type == "wear") {
         for (int slot : r1->slots) {
@@ -49,7 +53,10 @@ bool Rule::RulesCompatible(Rule* r1, Rule* r2) {
     return true;
 }
 
-bool Rule::ConflictsWith(Rule* other) { return !(RulesCompatible(this, other) && RulesCompatible(other, this)); }
+bool Rule::ConflictsWith(Rule* other) { 
+    return exclude.contains(other->GetId()) || other->exclude.contains(GetId()) ||
+           !(RulesCompatible(this, other) && RulesCompatible(other, this));
+}
 
 Rule::Rule(Pack* pack, std::string name) {
     this->name = name;

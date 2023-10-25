@@ -8,10 +8,19 @@
 
 namespace DFF {
     class RulePath {
-        articuno_deserialize(ar) { 
-            ar <=> articuno::kv(ruleIds, "ruleIds"); 
-        }
+    public:
+        inline RulePath(std::string name) { this->name = name; }
+
+        inline std::string GetName() { return name; }
+        inline std::vector<std::string> GetRuleIds() { return ruleIds; }
+
+    private:
+        articuno_deserialize(ar) { ar <=> articuno::kv(ruleIds, "rules"); }
 
         std::vector<std::string> ruleIds;
-    }
+        std::string name;
+
+        friend class articuno::access;
+    };
+
 }  // namespace DFF

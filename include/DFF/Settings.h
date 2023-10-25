@@ -25,5 +25,11 @@ namespace DFF {
         inline double GetMulti() {
             return RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESGlobal>(0x03CDFC, "DeviousFollowers.esp")->value;
         }
+
+        inline int GetWillpower() {
+            return RE::TESDataHandler::GetSingleton()
+                ->LookupForm<RE::TESGlobal>(0x1A2A7, "Update.esm")
+                ->value;
+        }
     }
 }
