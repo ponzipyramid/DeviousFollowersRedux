@@ -9,8 +9,18 @@ namespace DFF {
         inline RE::TESObjectARMO* GetArmor() { 
             return RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESObjectARMO>(formId, espName);
         }
+        inline std::string GetName() { 
+            return name;
+        }
         std::unordered_set<std::string> keywordNames;
+        inline std::string GetKeywordListString() { 
+            std::string listString;
+            for (auto& keywordName : keywordNames) {
+                listString += keywordName + ',';
+            }
 
+            return listString;
+        }
     private:
         articuno_deserialize(ar) { 
             ar <=> articuno::kv(name, "name");
@@ -52,7 +62,8 @@ namespace DFF {
                 {"zad_DeviousLegCuffs", zad_DeviousLegCuffs}, 
                 {"zad_DeviousArmbinder", zad_DeviousArmbinder}, 
                 {"zad_DeviousGag", zad_DeviousGag}, 
-                {"zad_DeviousGagPanel", zad_DeviousGagPanel}, 
+                {"zad_DeviousGagPanel", zad_DeviousGagPanel},
+                {"zad_DeviousGagRing", zad_DeviousGagRing}, 
                 {"zad_DeviousBlindfold", zad_DeviousBlindfold}, 
                 {"zad_DeviousHarness", zad_DeviousHarness}, 
                 {"zad_DeviousPiercingsNipple", zad_DeviousPiercingsNipple}, 
@@ -87,18 +98,23 @@ namespace DFF {
 
                 auto& listDevices = deviceCategories[key];
 
-                for (auto& device : listDevices) {
-                    auto id = device.GetArmor()->GetFormID();
+                for (auto& lDevice : listDevices) {
+                    auto id = lDevice.GetArmor()->GetFormID();
+                    auto device = GetDeviceByArmor(lDevice.GetArmor());
 
-                    device.keywordNames.insert(key);
+                    if (!device) {
+                        devices[id] = &lDevice;  
+                        device = GetDeviceByArmor(lDevice.GetArmor());
+                    }
+
+                    device->keywordNames.insert(key);
+
+                    SKSE::log::info("DeviceLibary::Load: adding {} to {} has {} kwds", key, device->GetName(), device->keywordNames.size());
                     
-                    if (seen.contains(id)) continue;
-
-                    devices[id] = &device;
 
                     for (auto& filter : filters) {
-                        if (device.name.contains(filter)) {
-                            validDevices.insert(device.name);
+                        if (device->name.contains(filter)) {
+                            validDevices.insert(device->name);
                         }
                     }
 
@@ -121,6 +137,7 @@ namespace DFF {
         std::vector<Device> zad_DeviousArmbinder;
         std::vector<Device> zad_DeviousGag;
         std::vector<Device> zad_DeviousGagPanel;
+        std::vector<Device> zad_DeviousGagRing;
         std::vector<Device> zad_DeviousBlindfold;
         std::vector<Device> zad_DeviousHarness;
         std::vector<Device> zad_DeviousPiercingsNipple;

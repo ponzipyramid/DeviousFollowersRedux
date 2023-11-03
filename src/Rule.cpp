@@ -50,6 +50,16 @@ bool Rule::RulesCompatible(Rule* r1, Rule* r2) {
             if (r2->slots.contains(slot)) return false;
         }
     }
+
+    for (auto& sr1 : r1->subRules) {
+        for (auto& sr2 : r2->subRules) {
+            if (sr1.name == sr2.name) {
+                return false;
+            }
+
+        }
+    }
+
     return true;
 }
 

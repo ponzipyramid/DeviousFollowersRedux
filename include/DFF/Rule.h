@@ -58,6 +58,8 @@ namespace DFF {
            
             ar <=> articuno::kv(canReplace, "canReplace");
             ar <=> articuno::kv(exclude, "exclude");
+            
+            ar <=> articuno::kv(subRules, "subRules");
         }
 
         RE::FormID formId;
@@ -75,6 +77,7 @@ namespace DFF {
         int level;
 
         std::unordered_set<std::string> exclude;
+        std::vector<Rule> subRules;
 
         RE::TESGlobal* statusGlobal = nullptr;
 

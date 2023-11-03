@@ -74,7 +74,7 @@ namespace DFF {
 
         [[nodiscard]] inline const SeverityMode GetTargetSeverityMode() const noexcept { return targetSeverityMode; }
 
-        [[nodiscard]] inline const std::string GetForcedDealName() const noexcept { return forcedDealName; }
+        [[nodiscard]] inline const std::vector<std::string> GetForcedDealIds() const noexcept { return forcedDealIds; }
 
         [[nodiscard]] static const Config& GetSingleton() noexcept;
 
@@ -83,7 +83,7 @@ namespace DFF {
             std::string _targetSeverityMode;
 
             ar <=> articuno::kv(_debug, "debug");
-            ar <=> articuno::kv(forcedDealName, "forcedDeal");
+            ar <=> articuno::kv(forcedDealIds, "forcedDeals");
             
             ar <=> articuno::kv(baseScore, "baseScore");
             
@@ -112,10 +112,10 @@ namespace DFF {
             targetSeverityMode = calcModeMapping.count(_targetSeverityMode) ? calcModeMapping[_targetSeverityMode]
                                                                             : SeverityMode::Median;
 
-            std::transform(forcedDealName.begin(), forcedDealName.end(), forcedDealName.begin(), ::tolower);
+            for (auto& id : forcedDealIds) std::transform(id.begin(), id.end(), id.begin(), ::tolower);
         }
 
-        std::string forcedDealName;
+        std::vector<std::string> forcedDealIds;
         int baseScore;
         int belowThreshBoost;
         int exactThreshBoost;

@@ -238,9 +238,8 @@ std::string DealManager::SelectRule(std::string lastRejected) {
     Rule* extendRule = nullptr;
 
     std::unordered_map<int, std::vector<Rule*>> stratifiedRules;
-    
-    for (auto& [path, rule] : rules) {   
-        
+
+    for (auto& [path, rule] : rules) {
         if (!rule.IsEnabled()) {
             continue;
         }
@@ -279,30 +278,45 @@ std::string DealManager::SelectRule(std::string lastRejected) {
             candidateRules.insert(&rule);
         }
     }
-    
-    if (candidateRules.empty() && lastRejectedRule) candidateRules.insert(lastRejectedRule);
-    if (deals.size() > 0 && candidateRules.empty()) candidateRules.insert(extendRule); 
 
-    std::vector<Rule*> finalRules; 
-    finalRules.reserve(candidateRules.size());
+    Rule* selectedRule = nullptr;
     
-    std::vector<int> ruleWeights;
-    ruleWeights.reserve(candidateRules.size());
-    
-    int targetSeverity = CalculateTargetSeverity();
-    log::info("CalculateTargetSeverity: {}", targetSeverity);
+    auto forcedRuleIds = Config::GetSingleton().GetForcedDealIds();
 
-
-    for (auto rule : candidateRules) {
-        finalRules.push_back(rule);
-        ruleWeights.push_back(CalculateRuleWeight(rule, targetSeverity));
+    for (auto& ruleId : forcedRuleIds) {
+        if (auto rule = GetRuleByPath(ruleId)) {
+            if (!rule->IsActive() && candidateRules.contains(rule)) {
+                log::info("SelectRule: forcing rule to {}", ruleId);
+                selectedRule = rule;
+                break;
+            }
+        }
     }
 
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::discrete_distribution<> d(ruleWeights.begin(), ruleWeights.end());
-    Rule* selectedRule = finalRules[d(gen)];
-        
+    if (!selectedRule) {
+        if (candidateRules.empty() && lastRejectedRule) candidateRules.insert(lastRejectedRule);
+        if (deals.size() > 0 && candidateRules.empty()) candidateRules.insert(extendRule);
+
+        std::vector<Rule*> finalRules;
+        finalRules.reserve(candidateRules.size());
+
+        std::vector<int> ruleWeights;
+        ruleWeights.reserve(candidateRules.size());
+
+        int targetSeverity = CalculateTargetSeverity();
+        log::info("CalculateTargetSeverity: {}", targetSeverity);
+
+        for (auto rule : candidateRules) {
+            finalRules.push_back(rule);
+            ruleWeights.push_back(CalculateRuleWeight(rule, targetSeverity));
+        }
+
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::discrete_distribution<> d(ruleWeights.begin(), ruleWeights.end());
+        selectedRule = finalRules[d(gen)];
+    }
+
     log::info("SelectRule: Selected {}", selectedRule->GetName());
 
     selectedRule->SetSelected();
@@ -342,56 +356,33 @@ int DealManager::ActivateRule(std::string path) {
     if (auto rule = GetRuleByPath(path)) {
         log::info("ActivateRule: activating {}", path);
 
-        Deal* chosen = nullptr;
-        int replaceAt = -1;
         std::vector<Deal*> candidateDeals;
         for (auto& [name, deal] : deals) {
             if (deal.IsOpen()) {
                 candidateDeals.push_back(&deal);
             }
-            for (int i = 0; i < deal.rules.size(); i++) {
-                auto activeRule = deal.rules[i];
-
-                if (rule->CanRuleIdReplace(activeRule->GetId())) {
-                    chosen = &deal;
-                    replaceAt = i;
-                    break;
-                }
-            }
-
-            if (chosen) {
-                break;
-            }
         }
 
-        if (chosen && replaceAt >= 0) {
-            auto toReplace = chosen->rules[replaceAt];
+        Deal* chosen = nullptr;
 
-            log::info("ActivateRule: Replacing {} with {}", toReplace->GetId(), rule->GetId());
+        int index = PickRandom(candidateDeals.size());
+        log::info("ActivateRule: index = {} out of {}", index, deals.size());
+        if (candidateDeals.empty() || index == candidateDeals.size()) {
+            auto name = GetNextDealName();
+            Deal deal(name);
 
-            toReplace->Reset();
-            chosen->rules[replaceAt] = rule;
+            auto key = Lowercase(name);
+
+            deals[key] = deal;
+            chosen = GetDealByName(key);
         } else {
-            int index = PickRandom(candidateDeals.size());
-            log::info("ActivateRule: index = {} out of {}", index, deals.size());
-            if (candidateDeals.empty() || index == candidateDeals.size()) {
-                auto name = GetNextDealName();
-                Deal deal(name);
-
-                auto key = Lowercase(name);
-
-                deals[key] = deal;
-                chosen = GetDealByName(key);
-            } else {
-                chosen = candidateDeals[index];
-            }
-
-            log::info("ActivateRule: selected deal {} {}", chosen->GetName(), chosen->rules.size());
+            chosen = candidateDeals[index];
         }
+
+        log::info("ActivateRule: selected deal {} {}", chosen->GetName(), chosen->rules.size());
 
         rule->Activate();
         chosen->UpdateTimer();
-
         chosen->rules.push_back(rule);
 
         log::info("ActivateRule: num rules = {} num deals = {}", chosen->rules.size(), deals.size());

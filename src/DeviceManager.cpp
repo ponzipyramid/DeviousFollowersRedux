@@ -28,7 +28,18 @@ DeviceManager& DeviceManager::GetSingleton() noexcept {
 
 void DeviceManager::Init() {     
     std::string dir("Data\\SKSE\\Plugins\\Devious Followers Redux\\Config");
+    std::string devicesDefaultFile = dir + "\\devices.default.json";
     std::string devicesFile = dir + "\\devices.json";
+
+    if (!std::filesystem::exists(devicesDefaultFile)) {
+        log::error("Error: devices default file doesn't exist");
+        return;
+    }
+
+    if (!std::filesystem::exists(devicesFile) && !std::filesystem::copy_file(devicesDefaultFile, devicesFile)) {
+        log::error("Error: failed to generate devices file");
+        return;
+    }
 
     std::ifstream inputFile(devicesFile);
     if (inputFile.good()) {
@@ -52,11 +63,12 @@ RE::TESObjectARMO* DeviceManager::GetRandomDeviceByKeyword(RE::Actor* actor, RE:
     RE::TESObjectREFR::InventoryItemMap itemMap = actor->GetInventory();
     for (auto& [item, value] : itemMap) {
         auto refr = item->As<RE::TESObjectARMO>();
+        log::info("GetRandomDeviceByKeyword: Scanning {} {}", item->GetName(), refr != nullptr);
 
         if (!refr) continue;
 
         for (auto& itemKwd : refr->GetKeywords()) {
-            if (itemKwd->GetFormID() == kwd->GetFormID()) return nullptr;
+            if (itemKwd->GetFormID() == kwd->GetFormID()) return refr;
 
             std::string kwdName(itemKwd->GetFormEditorID());
             if (kwdName.starts_with("zad_Devious")) {
@@ -109,6 +121,9 @@ RE::TESObjectARMO* DeviceManager::GetWornItemByKeyword(RE::Actor* actor, RE::BGS
             if (device->keywordNames.contains(kwd->GetFormEditorID())) {
                 SKSE::log::info("Found Item: {}", refr->GetName());
                 return refr;
+            } else {
+                log::info("GetWornItemByKeyword: {} is devious but not item {} w/o {}", item->GetFormEditorID(),
+                          device->GetKeywordListString(), kwd->GetFormEditorID()); 
             }
         } else {
             log::info("GetWornItemByKeyword: {} is not an inventory device {}", item->GetName(), refr != nullptr);
