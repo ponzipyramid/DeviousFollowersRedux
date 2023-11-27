@@ -1,5 +1,4 @@
 #include "Config.h"
-#include <articuno/archives/ryml/ryml.h>
 
 using namespace DFF;
 using namespace SKSE;
@@ -26,8 +25,6 @@ const Config& Config::GetSingleton() noexcept {
 
         std::ifstream inputFile(configFile);
         if (inputFile.good()) {
-            articuno::ryml::yaml_source ar(inputFile);
-            ar >> instance;
         }
         latch.count_down();
     }

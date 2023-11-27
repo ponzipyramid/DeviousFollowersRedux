@@ -2,14 +2,12 @@
 #include <Device/DeviceManager.h>
 #include <Config.h>
 #include <DFF/Deal.h>
-#include <articuno/archives/ryml/ryml.h>
 #include <random>
 #include <stdlib.h>
 #include <ranges>
 #include "DFF/DealManager.h"
 
 using namespace DFF;
-using namespace articuno::ryml;
 using namespace SKSE;
 
 namespace {
@@ -43,10 +41,7 @@ void DeviceManager::Init() {
 
     std::ifstream inputFile(devicesFile);
     if (inputFile.good()) {
-        yaml_source ar(inputFile);
 
-        ar >> lib;
-       
         log::info("Loaded in device library");
     } else
         log::error("Error: Failed to read device library");

@@ -1,8 +1,6 @@
 #pragma once
 
 #include "Rule.h"
-#include <articuno/articuno.h>
-#include <articuno/types/auto.h>
 #include <RE/Skyrim.h>
 #include <SKSE/SKSE.h>
 

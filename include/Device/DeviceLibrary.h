@@ -1,8 +1,5 @@
 #pragma once
 
-#include <articuno/articuno.h>
-#include <articuno/types/auto.h>
-
 namespace DFF {
     class Device {
     public:
@@ -22,17 +19,11 @@ namespace DFF {
             return listString;
         }
     private:
-        articuno_deserialize(ar) { 
-            ar <=> articuno::kv(name, "name");
-            ar <=> articuno::kv(formId, "formId");
-            ar <=> articuno::kv(espName, "espName");
-        }
 
         std::string name;
         int formId;
         std::string espName;
 
-        friend class articuno::access;
         friend class DeviceLibrary;
     };
 
@@ -47,84 +38,6 @@ namespace DFF {
             return validDevices.contains(device->name);
         }
     private:
-        articuno_deserialize(ar) {
-            ar <=> articuno::kv(filters, "filters");
-
-            deviceCategories = {
-                {"zad_DeviousCollar", zad_DeviousCollar}, 
-                {"zad_DeviousPonyGear", zad_DeviousPonyGear}, 
-                {"zad_DeviousBelt", zad_DeviousBelt}, 
-                {"zad_DeviousPlug", zad_DeviousPlug}, 
-                {"zad_DeviousPlugVaginal", zad_DeviousPlugVaginal}, 
-                {"zad_DeviousPlugAnal", zad_DeviousPlugAnal}, 
-                {"zad_DeviousBra", zad_DeviousBra}, 
-                {"zad_DeviousArmCuffs", zad_DeviousArmCuffs}, 
-                {"zad_DeviousLegCuffs", zad_DeviousLegCuffs}, 
-                {"zad_DeviousArmbinder", zad_DeviousArmbinder}, 
-                {"zad_DeviousGag", zad_DeviousGag}, 
-                {"zad_DeviousGagPanel", zad_DeviousGagPanel},
-                {"zad_DeviousGagRing", zad_DeviousGagRing}, 
-                {"zad_DeviousBlindfold", zad_DeviousBlindfold}, 
-                {"zad_DeviousHarness", zad_DeviousHarness}, 
-                {"zad_DeviousPiercingsNipple", zad_DeviousPiercingsNipple}, 
-                {"zad_DeviousPiercingsVaginal", zad_DeviousPiercingsVaginal}, 
-                {"zad_DeviousCorset", zad_DeviousCorset}, 
-                {"zad_DeviousHeavyBondage", zad_DeviousHeavyBondage}, 
-                {"zad_DeviousSuit", zad_DeviousSuit}, 
-                {"zad_DeviousHobbleSkirt", zad_DeviousHobbleSkirt}, 
-                {"zad_DeviousHobbleSkirtRelaxed", zad_DeviousHobbleSkirtRelaxed}, 
-                {"zad_DeviousStraitJacket", zad_DeviousStraitJacket}, 
-                {"zad_DeviousHood", zad_DeviousHood}, 
-                {"zad_DeviousGagLarge", zad_DeviousGagLarge}, 
-                {"zad_DeviousYoke", zad_DeviousYoke}, 
-                {"zad_DeviousBoots", zad_DeviousBoots}, 
-                {"zad_DeviousGloves", zad_DeviousGloves}, 
-                {"zad_DeviousBondageMittens", zad_DeviousBondageMittens}, 
-                {"zad_DeviousAnkleShackles", zad_DeviousAnkleShackles}, 
-                {"zad_DeviousCuffsFront", zad_DeviousCuffsFront}, 
-                {"zad_DeviousArmbinderElbow", zad_DeviousArmbinderElbow}, 
-                {"zad_DeviousYokeBB", zad_DeviousYokeBB}, 
-                {"zad_DeviousPetSuit", zad_DeviousPetSuit}, 
-                {"zad_DeviousElbowTie", zad_DeviousElbowTie}
-            };
-
-            auto handler = RE::TESDataHandler::GetSingleton();
-            std::unordered_set<RE::FormID> seen;
-
-            for (auto& [key, list] : deviceCategories) {
-                ar <=> articuno::kv(list, key);
-
-                deviceCategories[key] = list;
-
-                auto& listDevices = deviceCategories[key];
-
-                for (auto& lDevice : listDevices) {
-                    auto id = lDevice.GetArmor()->GetFormID();
-                    auto device = GetDeviceByArmor(lDevice.GetArmor());
-
-                    if (!device) {
-                        devices[id] = &lDevice;  
-                        device = GetDeviceByArmor(lDevice.GetArmor());
-                    }
-
-                    device->keywordNames.insert(key);
-
-                    SKSE::log::info("DeviceLibary::Load: adding {} to {} has {} kwds", key, device->GetName(), device->keywordNames.size());
-                    
-
-                    for (auto& filter : filters) {
-                        if (device->name.contains(filter)) {
-                            validDevices.insert(device->name);
-                        }
-                    }
-
-                    seen.insert(id);
-                }
-            }
-
-            SKSE::log::info("{} devices registered", devices.size());
-            SKSE::log::info("{} devices are valid", validDevices.size());
-        }
         std::vector<Device> zad_DeviousCollar;
         std::vector<Device> zad_DeviousPonyGear;
         std::vector<Device> zad_DeviousBelt;
@@ -165,7 +78,5 @@ namespace DFF {
         std::unordered_map<RE::FormID, Device*> devices;
         std::unordered_map<std::string, std::vector<Device>> deviceCategories;
         std::unordered_set<std::string> validDevices;
-
-        friend class articuno::access;
     };
 }

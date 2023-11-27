@@ -6,9 +6,6 @@
 #include <Config.h>
 #include "UI.hpp"
 #include "Serialization.hpp"
-
-#include <articuno/archives/ryml/ryml.h>
-
 #include <algorithm>
 #include <random>
 #include <sys/types.h>
@@ -17,7 +14,6 @@
 
 using namespace DFF;
 using namespace SKSE;
-using namespace articuno::ryml;
 
 namespace {
     inline const auto ActiveDealsRecord = _byteswap_ulong('ACTD');
@@ -87,8 +83,6 @@ void DealManager::Init() {
         if (inputFile.good()) {
             try {
                 log::info("Init: Initializing add-on {}", packName);
-                yaml_source ar(inputFile);
-                ar >> pack;
 
                 if (pack.Init(handler)) {
                     log::info("Init: Registered Pack {}", pack.GetName());
@@ -118,9 +112,6 @@ void DealManager::Init() {
                     try {
                         std::ifstream inputFile(fileName.string());
                         if (inputFile.good()) {
-                            yaml_source ar(inputFile);
-
-                            ar >> rule;
 
                             if (rule.Init(handler)) {
                                 auto globalId = rule.GetGlobal()->GetFormID();
@@ -168,8 +159,6 @@ void DealManager::Init() {
                     try {
                         std::ifstream inputFile(fileName.string());
                         if (inputFile.good()) {
-                            yaml_source ar(inputFile);
-                            ar >> path;
                         } else
                             log::error("Init Error - Failed to read path file");
                     } catch (const std::exception& e) {

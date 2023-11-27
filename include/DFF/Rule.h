@@ -3,8 +3,6 @@
 #include <RE/Skyrim.h>
 #include <DFF/Pack.h>
 #include <SKSE/SKSE.h>
-#include <articuno/articuno.h>
-#include <articuno/types/auto.h>
 
 namespace DFF {
     class Rule {
@@ -42,25 +40,6 @@ namespace DFF {
     private:
         static bool RulesCompatible(Rule* r1, Rule* r2);
 
-        articuno_deserialize(ar) {
-            ar <=> articuno::kv(formId, "formId");
-
-            ar <=> articuno::kv(type, "type");
-            ar <=> articuno::kv(slots, "slots");
-            ar <=> articuno::kv(negate, "negate");
-            ar <=> articuno::kv(level, "level");
-
-            ar <=> articuno::kv(hint, "hint");
-            ar <=> articuno::kv(info, "info");
-            
-            ar <=> articuno::kv(preventDisable, "preventDisable");
-            ar <=> articuno::kv(requirements, "requirements");
-           
-            ar <=> articuno::kv(canReplace, "canReplace");
-            ar <=> articuno::kv(exclude, "exclude");
-            
-            ar <=> articuno::kv(subRules, "subRules");
-        }
 
         RE::FormID formId;
 
@@ -86,7 +65,5 @@ namespace DFF {
         std::vector<std::string> requirements;
 
         std::unordered_set<std::string> canReplace;
-
-        friend class articuno::access;
     };
 }  // namespace DFF

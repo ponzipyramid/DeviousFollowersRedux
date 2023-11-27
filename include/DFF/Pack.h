@@ -2,8 +2,6 @@
 
 #include <RE/Skyrim.h>
 #include <SKSE/SKSE.h>
-#include <articuno/articuno.h>
-#include <articuno/types/auto.h>
 
 namespace DFF {
     class Rule; 
@@ -21,12 +19,6 @@ namespace DFF {
 
         bool Init(RE::TESDataHandler* handler);
     private:
-        articuno_deserialize(ar) {
-            ar <=> articuno::kv(formId, "formId");
-            ar <=> articuno::kv(modName, "modName");
-            ar <=> articuno::kv(author, "author");
-        }
-
         std::string name;
         RE::FormID formId;
         std::string modName;
@@ -34,7 +26,5 @@ namespace DFF {
         std::vector<Rule*> rules;
 
         RE::TESQuest* quest;
-
-        friend class articuno::access;
     };
 };  // namespace DFF
