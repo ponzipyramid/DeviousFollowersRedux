@@ -71,31 +71,26 @@ void DealManager::Init() {
             continue;
         }
 
-        std::string packName = a.path().stem().string();
+        auto packName = a.path().stem().string();
+        auto packId = Lowercase(packName);
 
-        std::string configFile = dir + "\\" + packName + "\\config.yaml";
+        try {
 
-        std::string packId = Lowercase(packName);
+            log::info("Init: Initializing add-on {}", packName);
 
-        Pack pack(packName);
-
-        std::ifstream inputFile(configFile);
-        if (inputFile.good()) {
-            try {
-                log::info("Init: Initializing add-on {}", packName);
-
-                if (pack.Init(handler)) {
-                    log::info("Init: Registered Pack {}", pack.GetName());
-                    packs[packId] = pack; 
-                } else {
-                    continue;
-                }
-            } catch (...) {
-                SKSE::log::info("Init: Failed to register {}", packName);
+            YAML::Node packFile = YAML::LoadFile((a.path() / "config.yaml").string());
+            auto pack = Pack(packName, packFile);
+            
+            if (pack.Init(handler)) {
+                log::info("Init: Registered Pack {} made by {}", pack.GetName(), pack.GetAuthor());
+                packs[packId] = pack;
             }
-        } else {
+            else {
+                continue;
+            }
+        }
+        catch (...) {
             SKSE::log::info("Init: Failed to register {}", packName);
-            continue;
         }
 
         std::string rulesDir = dir + "\\" + packName + "\\Rules";

@@ -89,6 +89,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
+#include <yaml-cpp/yaml.h>
 #include <utility>
 #include <valarray>
 #include <variant>
