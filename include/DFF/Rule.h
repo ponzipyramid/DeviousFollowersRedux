@@ -8,7 +8,8 @@ namespace DFF {
     class Rule {
     public:
         [[nodiscard]] Rule() = default;
-        Rule(Pack* pack, std::string name);
+        Rule(Pack* pack, std::string name, YAML::Node root);
+        Rule(YAML::Node root) : Rule(nullptr, "", root) {}
         [[nodiscard]] inline const std::string GetName() { return name; }
         [[nodiscard]] inline const std::string GetType() { return type; }
         [[nodiscard]] inline const std::string GetId() { return id; }

@@ -40,9 +40,6 @@ namespace {
             log = std::make_shared<spdlog::logger>(
                 "Global", std::make_shared<spdlog::sinks::basic_file_sink_mt>(path->string(), true));
         }
-        const auto& debugConfig = DFF::Config::GetSingleton().GetDebug();
-        log->set_level(debugConfig.GetLogLevel());
-        log->flush_on(debugConfig.GetFlushLevel());
 
         spdlog::set_default_logger(std::move(log));
         spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] [%t] [%s:%#] %v");

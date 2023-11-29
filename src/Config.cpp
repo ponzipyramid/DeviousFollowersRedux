@@ -25,6 +25,13 @@ const Config& Config::GetSingleton() noexcept {
 
         std::ifstream inputFile(configFile);
         if (inputFile.good()) {
+            auto configNode = YAML::LoadFile(configFile);
+            try {
+                instance = Config(configNode);
+            }
+            catch (std::exception e) {
+                log::error("Config Parse Error - {}", e.what());
+            }
         }
         latch.count_down();
     }

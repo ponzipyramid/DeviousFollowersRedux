@@ -1,24 +1,9 @@
 #pragma once
 
 #include <SKSE/SKSE.h>
+#include "Parse.hpp"
 
 namespace DFF {
-    class Debug {
-    public:
-        [[nodiscard]] inline spdlog::level::level_enum GetLogLevel() const noexcept {
-            return _logLevel;
-        }
-
-        [[nodiscard]] inline spdlog::level::level_enum GetFlushLevel() const noexcept {
-            return _flushLevel;
-        }
-
-    private:
-
-        spdlog::level::level_enum _logLevel{spdlog::level::level_enum::info};
-        spdlog::level::level_enum _flushLevel{spdlog::level::level_enum::trace};
-    };
-
     enum SeverityMode {
         Median,
         Mode,
@@ -28,10 +13,40 @@ namespace DFF {
 
     class Config {
     public:
-        [[nodiscard]] inline const Debug& GetDebug() const noexcept {
-            return _debug;
-        }
+        Config() = default;
+        Config(YAML::Node a_node) {
+            std::string _targetSeverityMode;
+            this->baseScore = Parse::FetchIfPresent<int>(a_node["baseScore"], 0);
 
+            this->belowThreshBoost = Parse::FetchIfPresent<int>(a_node["belowThreshBoost"], 0);
+            this->exactThreshBoost = Parse::FetchIfPresent<int>(a_node["exactThreshBoost"], 0);
+            
+            this->pathBoost = Parse::FetchIfPresent<int>(a_node["pathBoost"], 0);
+           
+            this->lowWilpowerBoost = Parse::FetchIfPresent<int>(a_node["lowWilpowerBoost"], 0);
+            this->highWillpowerBoost = Parse::FetchIfPresent<int>(a_node["highWillpowerBoost"], 0);
+
+            this->lowWillpowerThresh = Parse::FetchIfPresent<int>(a_node["lowWillpowerThresh"], 0);
+            this->highWillpowerThresh = Parse::FetchIfPresent<int>(a_node["highWillpowerThresh"], 0);
+            
+            this->applyMultiplePathBoost = Parse::FetchIfPresent<bool>(a_node["applyMultiplePathBoost"], false);
+            
+            this->forcedDealIds = Parse::FetchIfPresent<std::vector<std::string>>(a_node["forcedDealIds"], std::vector<std::string>());
+            for (auto& id : forcedDealIds) std::transform(id.begin(), id.end(), id.begin(), ::tolower);
+
+            _targetSeverityMode = Parse::FetchIfPresent<std::string>(a_node["targetSeverityMode"], "median");
+
+            std::unordered_map<std::string, SeverityMode> calcModeMapping = {
+                {"median", SeverityMode::Median},
+                {"mode", SeverityMode::Mode},
+                {"max", SeverityMode::Max},
+                {"none", SeverityMode::None},
+            };
+
+            targetSeverityMode = calcModeMapping.count(_targetSeverityMode) ? calcModeMapping[_targetSeverityMode]
+                : SeverityMode::Median;
+        }
+        
         [[nodiscard]] inline const int GetBaseScore() const noexcept { return baseScore; }
         
         [[nodiscard]] inline const int GetBelowThresholdBoost() const noexcept { return belowThreshBoost; }
@@ -68,7 +83,5 @@ namespace DFF {
         int highWillpowerThresh;
         bool applyMultiplePathBoost;
         SeverityMode targetSeverityMode;
-
-        Debug _debug;
     };
 }

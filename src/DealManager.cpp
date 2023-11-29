@@ -56,6 +56,8 @@ void DealManager::Init() {
     std::vector<RulePath> paths;
     std::unordered_map<RE::FormID, std::string> seenGlobals;
 
+    SKSE::log::info("Config {}", Config::GetSingleton().GetBaseScore());
+
     std::string dir("Data\\SKSE\\Plugins\\Devious Followers Redux\\Packs");
 
     if (!IsDirValid(dir)) {
@@ -78,7 +80,7 @@ void DealManager::Init() {
 
             log::info("Init: Initializing add-on {}", packName);
 
-            YAML::Node packFile = YAML::LoadFile((a.path() / "config.yaml").string());
+            auto packFile = YAML::LoadFile((a.path() / "config.yaml").string());
             auto pack = Pack(packName, packFile);
             
             if (pack.Init(handler)) {
@@ -96,17 +98,17 @@ void DealManager::Init() {
         std::string rulesDir = dir + "\\" + packName + "\\Rules";
         if (IsDirValid(rulesDir)) {
             for (const auto& p : std::filesystem::directory_iterator(rulesDir)) {
-                auto fileName = p.path();
+                auto filePath = p.path();
 
-                if (fileName.extension() == ext1 || fileName.extension() == ext2) {
-                    const auto name = fileName.stem().string();
-
-                    Rule rule(&packs[packId], name);
-                    bool issue = false;
+                if (filePath.extension() == ext1 || filePath.extension() == ext2) {
+                    const auto name = filePath.stem().string();
 
                     try {
-                        std::ifstream inputFile(fileName.string());
+                        std::ifstream inputFile(filePath.string());
                         if (inputFile.good()) {
+                            auto ruleFile = YAML::LoadFile(filePath.string());
+
+                            Rule rule(&packs[packId], name, ruleFile);
 
                             if (rule.Init(handler)) {
                                 auto globalId = rule.GetGlobal()->GetFormID();
@@ -129,11 +131,8 @@ void DealManager::Init() {
                         } else
                             log::error("Init Error - Failed to read rule file");
                     } catch (const std::exception& e) {
-                        issue = true;
-                        log::error("Init: Error - {}", e.what());
+                        log::error("Init: Rule {} Registration Error - {}", name, e.what());
                     }
-
-                    if (issue) log::error("Init: Failed to register rule: {}", rule.GetName());
                 }
             }
         } else {
@@ -143,27 +142,24 @@ void DealManager::Init() {
         std::string pathsDir = dir + "\\" + packName + "\\Paths";
         if (IsDirValid(pathsDir)) {
             for (const auto& p : std::filesystem::directory_iterator(pathsDir)) {
-                auto fileName = p.path();
+                auto filePath = p.path();
 
-                if (fileName.extension() == ext1 || fileName.extension() == ext2) {
-                    const auto name = fileName.stem().string();
-
-                    RulePath path(name);
-                    bool issue = false;
+                if (filePath.extension() == ext1 || filePath.extension() == ext2) {
+                    const auto name = filePath.stem().string();
 
                     try {
-                        std::ifstream inputFile(fileName.string());
+                        std::ifstream inputFile(filePath.string());
                         if (inputFile.good()) {
+                            auto pathFile = YAML::LoadFile(filePath.string());
+                            RulePath path(name, pathFile);
+                            if (!path.GetRuleIds().empty()) {
+                                log::info("Init: Registered Path {}", path.GetName());
+                                paths.push_back(path);
+                            }
                         } else
                             log::error("Init Error - Failed to read path file");
                     } catch (const std::exception& e) {
-                        issue = true;
                         log::error("Init: Error - {}", e.what());
-                    }
-
-                    if (!issue && !path.GetRuleIds().empty()) {
-                        log::info("Init: Registered Path {}", path.GetName());
-                        paths.push_back(path);
                     }
                 }
             }

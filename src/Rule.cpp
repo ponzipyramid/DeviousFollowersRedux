@@ -68,9 +68,55 @@ bool Rule::ConflictsWith(Rule* other) {
            !(RulesCompatible(this, other) && RulesCompatible(other, this));
 }
 
-Rule::Rule(Pack* pack, std::string name) {
-    this->name = name;
-    this->pack = pack;
-    this->id = pack->GetName() + '/' + name;
-    std::transform(this->id.begin(), this->id.end(), this->id.begin(), ::tolower);
+
+Rule::Rule(Pack* pack, std::string name, YAML::Node a_node) {
+    if (pack) {
+        this->name = name;
+        this->pack = pack;
+        this->id = pack->GetName() + '/' + name;
+        std::transform(this->id.begin(), this->id.end(), this->id.begin(), ::tolower);
+    }
+
+    this->formId = a_node["formId"].as<int>();
+    this->type = a_node["type"].as<std::string>();
+
+    if (a_node["slots"].IsSequence()) {
+        auto slotList = a_node["slots"].as<std::vector<int>>();;
+        for (auto slot : slotList)
+            this->slots.insert(slot);
+    }
+
+    this->level = a_node["level"].as<int>();
+    this->hint = a_node["hint"].IsDefined() ? a_node["hint"].as<std::string>() : "";
+    this->info = a_node["info"].IsDefined() ? a_node["info"].as<std::string>() : "";
+    this->preventDisable = a_node["preventDisable"].IsDefined() ? a_node["preventDisable"].as<bool>() : false;
+    this->requirements = a_node["requirements"].IsDefined() ? a_node["requirements"].as<std::vector<std::string>>() : std::vector<std::string>();
+    
+    if (a_node["exclude"].IsSequence()) {
+        auto excludeList = a_node["exclude"].as<std::vector<std::string>>();;
+        for (auto ruleId : excludeList)
+            this->exclude.insert(ruleId);
+
+    }
+
+    if (a_node["subRules"].IsSequence()) {
+        auto subRuleListNode = a_node["subRules"];
+
+        for (std::size_t i = 0; i < subRuleListNode.size(); i++) {
+            auto ruleNode = subRuleListNode[i];
+            Rule subRule;
+
+            subRule.type = ruleNode["type"].as<std::string>();
+
+            if (ruleNode["slots"].IsSequence()) {
+                auto slotList = ruleNode["slots"].as<std::vector<int>>();;
+                for (auto slot : slotList)
+                    subRule.slots.insert(slot);
+            }
+
+            subRules.push_back(subRule);
+        }
+    }
+
+    SKSE::log::info("Rule constructed: name = {}, pack = {}, type = {}, id = {}", name, pack != nullptr, type, id);
 }

@@ -30,6 +30,7 @@ set(headers
         include/DFF/DealManager.h
         include/Script.hpp
         include/UI.hpp
+        include/Parse.hpp
         include/Serialization.hpp
         include/Device/DeviceLibrary.h
         include/Device/DeviceManager.h
