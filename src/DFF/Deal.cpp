@@ -1,7 +1,7 @@
 #include "DFF/Deal.h"
 #include "DFF/Settings.h"
 #include "DFF/DealManager.h"
-#include "Serialization.hpp"
+#include "Util/Serialization.hpp"
 
 using namespace DFF;
 

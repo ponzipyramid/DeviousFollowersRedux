@@ -21,36 +21,35 @@ configure_file(
         @ONLY)
 
 set(headers
-        include/DFF/DFF.h
         include/DFF/Deal.h
         include/DFF/Rule.h
         include/DFF/Pack.h
         include/DFF/RulePath.h
         include/DFF/Settings.h
         include/DFF/DealManager.h
-        include/Script.hpp
-        include/UI.hpp
-        include/Parse.hpp
-        include/Serialization.hpp
+
         include/Device/DeviceLibrary.h
         include/Device/DeviceManager.h
+        
+        include/Util/Script.hpp
+        include/Util/UI.hpp
+        include/Util/Parse.hpp
+        include/Util/Serialization.hpp
     )
 
 set(sources
-        src/Config.cpp
-        src/Deal.cpp
-        src/Pack.cpp
-        src/Rule.cpp
-        src/DealManager.cpp
+        src/Config/Config.cpp
+
+        src/DFF/Deal.cpp
+        src/DFF/Pack.cpp
+        src/DFF/Rule.cpp
+        src/DFF/DealManager.cpp
+
+        src/Device/DeviceManager.cpp
+        src/Papyrus/Papyrus.cpp
         src/Main.cpp
-        src/Papyrus.cpp
-        src/DeviceManager.cpp
 
         ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
-
-set(tests
-        test/DealManager.cpp
-    )
 
 source_group(
         TREE ${CMAKE_CURRENT_SOURCE_DIR}
@@ -58,16 +57,6 @@ source_group(
         ${headers}
         ${sources})
 
-#########################################################################################################################
-### Build options
-#########################################################################################################################
-message("Options:")
-option(BUILD_TESTS "Build unit tests." OFF)
-message("\tTests: ${BUILD_TESTS}")
-
-########################################################################################################################
-## Configure target DLL
-########################################################################################################################
 find_package(CommonLibSSE CONFIG REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(nlohmann_json REQUIRED)

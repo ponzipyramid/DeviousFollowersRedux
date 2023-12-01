@@ -1,8 +1,8 @@
 #include <DFF/DealManager.h>
 #include "Device/DeviceManager.h"
 
-#include "Config.h"
-#include "Papyrus.h"
+#include "Config/Config.h"
+#include "Papyrus/Papyrus.h"
 
 #include <stddef.h>
 

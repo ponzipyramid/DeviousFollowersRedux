@@ -1,6 +1,6 @@
 #include <SKSE/SKSE.h>
 #include <Device/DeviceManager.h>
-#include <Config.h>
+#include <Config/Config.h>
 #include <DFF/Deal.h>
 #include <random>
 #include <stdlib.h>

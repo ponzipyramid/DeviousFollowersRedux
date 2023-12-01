@@ -1,7 +1,7 @@
 #pragma once
 
 #include <SKSE/SKSE.h>
-#include "Parse.hpp"
+#include "Util/Parse.hpp"
 
 namespace DFF {
     enum SeverityMode {

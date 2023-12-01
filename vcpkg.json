@@ -1,36 +1,36 @@
 {
-    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
-    "name": "commonlibsse-sample-plugin",
-    "version-string": "1.0.0",
-    "port-version": 0,
-    "description": "Sample SKSE plugin based on CommonLibSSE, for unified AE/SE/VR deployment.",
-    "homepage": "https://www.skyrimng.com",
-    "license": "Apache-2.0",
-    "features": {
-        "plugin": {
-            "description": "Build the SKSE plugin.",
-            "dependencies": [
-              "commonlibsse-ng",
-              "yaml-cpp",
-              "nlohmann-json"
-            ]
-        },
-        "tests": {
-            "description": "Build tests for the SKSE plugin.",
-            "dependencies": [
-                {
-                    "name": "commonlibsse-sample-plugin",
-                    "default-features": false,
-                    "features": [
-                        "plugin"
-                    ]
-                },
-                "catch2"
-            ]
-        }
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "commonlibsse-sample-plugin",
+  "version-string": "1.0.0",
+  "port-version": 0,
+  "description": "Sample SKSE plugin based on CommonLibSSE, for unified AE/SE/VR deployment.",
+  "homepage": "https://www.skyrimng.com",
+  "license": "Apache-2.0",
+  "features": {
+    "plugin": {
+      "description": "Build the SKSE plugin.",
+      "dependencies": [
+        "commonlibsse-ng",
+        "yaml-cpp",
+        "nlohmann-json"
+      ]
     },
-    "default-features": [
-        "plugin",
-        "tests"
-    ]
+    "tests": {
+      "description": "Build tests for the SKSE plugin.",
+      "dependencies": [
+        {
+          "name": "commonlibsse-sample-plugin",
+          "default-features": false,
+          "features": [
+            "plugin"
+          ]
+        },
+        "catch2"
+      ]
+    }
+  },
+  "default-features": [
+    "plugin",
+    "tests"
+  ]
 }

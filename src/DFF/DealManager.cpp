@@ -3,9 +3,9 @@
 #include <DFF/Deal.h>
 #include <DFF/RulePath.h>
 #include "DFF/Settings.h"
-#include <Config.h>
-#include "UI.hpp"
-#include "Serialization.hpp"
+#include <Config/Config.h>
+#include "Util/UI.hpp"
+#include "Util/Serialization.hpp"
 #include <algorithm>
 #include <random>
 #include <sys/types.h>
