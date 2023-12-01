@@ -181,7 +181,7 @@ void DealManager::Init() {
         for (int j = i + 1; j < ruleIds.size(); j++) {
             r2 = &rules[ruleIds[j]];
             if (r1->ConflictsWith(r2)) {
-                log::info("Init: Conflict between {} and {}", r1->GetId(), r2->GetId());
+                //log::info("Init: Conflict between {} and {}", r1->GetId(), r2->GetId());
                 conflicts[r1].insert(r2);
                 conflicts[r2].insert(r1);
             }
@@ -198,13 +198,13 @@ void DealManager::Init() {
 
                     if (auto rule2 = GetRuleByPath(r2Id)) {
                         if (rule2->GetLevel() < rule1->GetLevel()) {
-                            log::info("Init: {} is a predecessor of {}", r2Id, r1Id);
+                            //log::info("Init: {} is a predecessor of {}", r2Id, r1Id);
                             predecessors[rule1].insert(rule2);
                         }
                     }
                 }
             } else {
-                log::info("Init: {} in path {} not found", r1Id, path.GetName());
+                //log::info("Init: {} in path {} not found", r1Id, path.GetName());
             }
         }
     }

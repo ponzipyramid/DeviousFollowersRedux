@@ -41,6 +41,8 @@ void DeviceManager::Init() {
 
     std::ifstream inputFile(devicesFile);
     if (inputFile.good()) {
+        auto data = json::parse(inputFile);
+        this->lib = DeviceLibrary(data);
 
         log::info("Loaded in device library");
     } else

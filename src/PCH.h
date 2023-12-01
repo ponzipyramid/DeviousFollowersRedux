@@ -89,7 +89,10 @@
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
+
 #include <yaml-cpp/yaml.h>
+#include <nlohmann/json.hpp>
+
 #include <utility>
 #include <valarray>
 #include <variant>
@@ -108,8 +111,11 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 
+
 // Compatible declarations with other sample projects.
 #define DLLEXPORT __declspec(dllexport)
+
+using json = nlohmann::json;
 
 using namespace std::literals;
 using namespace REL::literals;

@@ -127,8 +127,8 @@ namespace {
                     break;
                 case MessagingInterface::kDataLoaded: // All ESM/ESL/ESP plugins have loaded, main menu is now active.
                     // It is now safe to access form data.
-                    DFF::DealManager::GetSingleton().Init();
                     DFF::DeviceManager::GetSingleton().Init();
+                    DFF::DealManager::GetSingleton().Init();
                     break;
                 // Skyrim game events.
                 case MessagingInterface::kNewGame: // Player starts a new game from main menu.

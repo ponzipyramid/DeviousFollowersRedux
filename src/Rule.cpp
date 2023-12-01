@@ -117,6 +117,4 @@ Rule::Rule(Pack* pack, std::string name, YAML::Node a_node) {
             subRules.push_back(subRule);
         }
     }
-
-    SKSE::log::info("Rule constructed: name = {}, pack = {}, type = {}, id = {}", name, pack != nullptr, type, id);
 }

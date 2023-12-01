@@ -1,4 +1,6 @@
 #pragma once
+#include "yaml-cpp//yaml.h"
+
 
 namespace DFF {
     class Device {
@@ -19,16 +21,113 @@ namespace DFF {
             return listString;
         }
     private:
-
         std::string name;
-        int formId;
+        RE::FormID formId;
         std::string espName;
 
         friend class DeviceLibrary;
+        friend void from_json(const json& j, Device& p);
     };
+
+    inline void from_json(const json& j, Device& d) {
+        j.at("name").get_to(d.name);
+        j.at("espName").get_to(d.espName);
+
+        auto formIdNode = j.at("formId").template get<std::string>();
+        d.formId = (int)strtol(formIdNode.c_str(), NULL, 0);
+    }
 
     class DeviceLibrary {
     public:
+        DeviceLibrary() = default;
+        DeviceLibrary(json a_node) {
+            deviceCategories = {
+                {"zad_DeviousCollar", zad_DeviousCollar},
+                {"zad_DeviousPonyGear", zad_DeviousPonyGear},
+                {"zad_DeviousBelt", zad_DeviousBelt},
+                {"zad_DeviousPlug", zad_DeviousPlug},
+                {"zad_DeviousPlugVaginal", zad_DeviousPlugVaginal},
+                {"zad_DeviousPlugAnal", zad_DeviousPlugAnal},
+                {"zad_DeviousBra", zad_DeviousBra},
+                {"zad_DeviousArmCuffs", zad_DeviousArmCuffs},
+                {"zad_DeviousLegCuffs", zad_DeviousLegCuffs},
+                {"zad_DeviousArmbinder", zad_DeviousArmbinder},
+                {"zad_DeviousGag", zad_DeviousGag},
+                {"zad_DeviousGagPanel", zad_DeviousGagPanel},
+                {"zad_DeviousGagRing", zad_DeviousGagRing},
+                {"zad_DeviousBlindfold", zad_DeviousBlindfold},
+                {"zad_DeviousHarness", zad_DeviousHarness},
+                {"zad_DeviousPiercingsNipple", zad_DeviousPiercingsNipple},
+                {"zad_DeviousPiercingsVaginal", zad_DeviousPiercingsVaginal},
+                {"zad_DeviousCorset", zad_DeviousCorset},
+                {"zad_DeviousHeavyBondage", zad_DeviousHeavyBondage},
+                {"zad_DeviousSuit", zad_DeviousSuit},
+                {"zad_DeviousHobbleSkirt", zad_DeviousHobbleSkirt},
+                {"zad_DeviousHobbleSkirtRelaxed", zad_DeviousHobbleSkirtRelaxed},
+                {"zad_DeviousStraitJacket", zad_DeviousStraitJacket},
+                {"zad_DeviousHood", zad_DeviousHood},
+                {"zad_DeviousGagLarge", zad_DeviousGagLarge},
+                {"zad_DeviousYoke", zad_DeviousYoke},
+                {"zad_DeviousBoots", zad_DeviousBoots},
+                {"zad_DeviousGloves", zad_DeviousGloves},
+                {"zad_DeviousBondageMittens", zad_DeviousBondageMittens},
+                {"zad_DeviousAnkleShackles", zad_DeviousAnkleShackles},
+                {"zad_DeviousCuffsFront", zad_DeviousCuffsFront},
+                {"zad_DeviousArmbinderElbow", zad_DeviousArmbinderElbow},
+                {"zad_DeviousYokeBB", zad_DeviousYokeBB},
+                {"zad_DeviousPetSuit", zad_DeviousPetSuit},
+                {"zad_DeviousElbowTie", zad_DeviousElbowTie}
+            };
+
+            auto handler = RE::TESDataHandler::GetSingleton();
+            std::unordered_set<RE::FormID> seen;
+
+            for (auto& [key, list] : deviceCategories) {
+                SKSE::log::info("DeviceLibary::Load: processing list {}", key);
+
+                auto dList = a_node[key];
+
+                for (auto& [key, val] : dList.items())
+                {
+                    try {
+                        auto device = val.template get<Device>();
+                        list.push_back(device);
+                    }
+                    catch (std::exception e) {
+                        SKSE::log::info("Device errored {}: {}", key, e.what());
+                    }
+                    
+                }
+
+                deviceCategories[key] = list;
+
+                auto& listDevices = deviceCategories[key];
+
+                for (auto& lDevice : listDevices) {
+                    auto id = lDevice.GetArmor()->GetFormID();
+                    auto device = GetDeviceByArmor(lDevice.GetArmor());
+
+                    if (!device) {
+                        devices[id] = &lDevice;
+                        device = GetDeviceByArmor(lDevice.GetArmor());
+                    }
+
+                    device->keywordNames.insert(key);
+
+                    for (auto& filter : filters) {
+                        if (device->name.contains(filter)) {
+                            validDevices.insert(device->name);
+                        }
+                    }
+
+                    seen.insert(id);
+                }
+            }
+
+            SKSE::log::info("{} devices registered", devices.size());
+            SKSE::log::info("{} devices are valid", validDevices.size());
+        }
+
         inline std::vector<Device>& GetDevicesByCategory(std::string cat) {
             return deviceCategories[cat]; 
         }

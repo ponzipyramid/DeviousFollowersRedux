@@ -11,7 +11,8 @@
             "description": "Build the SKSE plugin.",
             "dependencies": [
               "commonlibsse-ng",
-              "yaml-cpp"
+              "yaml-cpp",
+              "nlohmann-json"
             ]
         },
         "tests": {

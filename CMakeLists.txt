@@ -70,6 +70,7 @@ message("\tTests: ${BUILD_TESTS}")
 ########################################################################################################################
 find_package(CommonLibSSE CONFIG REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 add_commonlibsse_plugin(${PROJECT_NAME} SOURCES ${headers} ${sources})
 add_library("${PROJECT_NAME}::${PROJECT_NAME}" ALIAS "${PROJECT_NAME}")
@@ -88,6 +89,7 @@ target_link_libraries(
     "${PROJECT_NAME}"
     PUBLIC
     yaml-cpp
+    nlohmann_json::nlohmann_json
 )
 
 target_precompile_headers(${PROJECT_NAME}
