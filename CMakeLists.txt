@@ -21,12 +21,12 @@ configure_file(
         @ONLY)
 
 set(headers
-        include/DFF/Deal.h
-        include/DFF/Rule.h
-        include/DFF/Pack.h
-        include/DFF/RulePath.h
-        include/DFF/Settings.h
-        include/DFF/DealManager.h
+        include/Deals/Deal.h
+        include/Deals/Rule.h
+        include/Deals/Pack.h
+        include/Deals/RulePath.h
+        include/Deals/Settings.h
+        include/Deals/DealManager.h
 
         include/Device/DeviceLibrary.h
         include/Device/DeviceManager.h
@@ -40,10 +40,10 @@ set(headers
 set(sources
         src/Config/Config.cpp
 
-        src/DFF/Deal.cpp
-        src/DFF/Pack.cpp
-        src/DFF/Rule.cpp
-        src/DFF/DealManager.cpp
+        src/Deals/Deal.cpp
+        src/Deals/Pack.cpp
+        src/Deals/Rule.cpp
+        src/Deals/DealManager.cpp
 
         src/Device/DeviceManager.cpp
         src/Papyrus/Papyrus.cpp

@@ -1,11 +1,11 @@
 #include <SKSE/SKSE.h>
 #include <Device/DeviceManager.h>
 #include <Config/Config.h>
-#include <DFF/Deal.h>
+#include <Deals/Deal.h>
 #include <random>
 #include <stdlib.h>
 #include <ranges>
-#include "DFF/DealManager.h"
+#include "Deals/DealManager.h"
 
 using namespace DFF;
 using namespace SKSE;

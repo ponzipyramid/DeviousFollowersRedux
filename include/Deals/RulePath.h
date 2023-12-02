@@ -1,6 +1,6 @@
 #pragma once
 
-#include <DFF/Rule.h>
+#include <Deals/Rule.h>
 #include <RE/Skyrim.h>
 #include <SKSE/SKSE.h>
 

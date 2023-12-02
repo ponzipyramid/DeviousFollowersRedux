@@ -1,8 +1,8 @@
 #include <SKSE/SKSE.h>
-#include <DFF/DealManager.h>
-#include <DFF/Deal.h>
-#include <DFF/RulePath.h>
-#include "DFF/Settings.h"
+#include <Deals/DealManager.h>
+#include <Deals/Deal.h>
+#include <Deals/RulePath.h>
+#include "Deals/Settings.h"
 #include <Config/Config.h>
 #include "Util/UI.hpp"
 #include "Util/Serialization.hpp"

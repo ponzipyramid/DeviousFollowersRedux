@@ -1,4 +1,4 @@
-#include <DFF/DealManager.h>
+#include <Deals/DealManager.h>
 #include "Device/DeviceManager.h"
 
 #include "Config/Config.h"

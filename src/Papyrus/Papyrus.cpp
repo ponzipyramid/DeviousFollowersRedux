@@ -1,6 +1,6 @@
 #include "Papyrus.h"
 
-#include <DFF/DealManager.h>
+#include <Deals/DealManager.h>
 #include <Device/DeviceManager.h>
 
 using namespace DFF;

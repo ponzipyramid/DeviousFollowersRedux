@@ -1,7 +1,7 @@
 #pragma once
 
 #include <RE/Skyrim.h>
-#include <DFF/Pack.h>
+#include <Deals/Pack.h>
 #include <SKSE/SKSE.h>
 
 namespace DFF {

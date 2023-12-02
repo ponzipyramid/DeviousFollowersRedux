@@ -1,8 +1,8 @@
 #pragma once
 
 #include <RE/Skyrim.h>
-#include <DFF/Deal.h>
-#include <DFF/Rule.h>
+#include <Deals/Deal.h>
+#include <Deals/Rule.h>
 
 namespace DFF {
 #pragma warning(push)
