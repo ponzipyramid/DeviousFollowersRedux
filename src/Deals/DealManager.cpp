@@ -225,7 +225,6 @@ std::string DealManager::SelectRule(std::string lastRejected) {
         }
 
         if (!rule.IsActive()) {
-            log::info("SelectRule: resetting {}", rule.GetId());
             rule.Reset();
         }
 
@@ -243,7 +242,6 @@ std::string DealManager::SelectRule(std::string lastRejected) {
         for (auto& [_, deal] : deals) {
             for (auto activeRule : deal.rules) {
                 if (conflicts[activeRule].contains(&rule) && !rule.CanRuleIdReplace(activeRule->GetId())) {
-                    log::info("SelectRule: excluding {} due to active rule {}", path, activeRule->GetId());
                     compatible = false;
                     break;
                 }
@@ -254,7 +252,6 @@ std::string DealManager::SelectRule(std::string lastRejected) {
         }
 
         if (compatible) {
-            log::info("SelectRule: adding {} to available pool", rule.GetId());
             candidateRules.insert(&rule);
         }
     }
@@ -266,7 +263,6 @@ std::string DealManager::SelectRule(std::string lastRejected) {
     for (auto& ruleId : forcedRuleIds) {
         if (auto rule = GetRuleByPath(ruleId)) {
             if (!rule->IsActive() && candidateRules.contains(rule)) {
-                log::info("SelectRule: forcing rule to {}", ruleId);
                 selectedRule = rule;
                 break;
             }
@@ -284,7 +280,6 @@ std::string DealManager::SelectRule(std::string lastRejected) {
         ruleWeights.reserve(candidateRules.size());
 
         int targetSeverity = CalculateTargetSeverity();
-        log::info("CalculateTargetSeverity: {}", targetSeverity);
 
         for (auto rule : candidateRules) {
             finalRules.push_back(rule);
@@ -318,7 +313,24 @@ bool DealManager::CanDisableRule(std::string ruleName) {
     return false;
 }
 
-int DealManager::ActivateRule(std::string path) {
+Deal* DealManager::CreateDeal(std::string name) {
+    log::info("CreateDeal: {}", name);
+
+    Deal deal(name);
+
+    auto key = Lowercase(name);
+
+    deals[key] = deal;
+
+    return &deals[key];
+}
+
+int DealManager::ActivateRule(std::string path, std::string a_dealName, bool a_create) {
+    Deal* chosen = GetDealByName(a_dealName);
+    if (chosen == nullptr && a_create) {
+        chosen = CreateDeal(a_dealName);
+    }
+
     if (path == ExtendRulePath) {
         log::info("ActivateRule: extending deal");
         std::vector<std::string> activeDeals;
@@ -336,29 +348,28 @@ int DealManager::ActivateRule(std::string path) {
     if (auto rule = GetRuleByPath(path)) {
         log::info("ActivateRule: activating {}", path);
 
-        std::vector<Deal*> candidateDeals;
-        for (auto& [name, deal] : deals) {
-            if (deal.IsOpen()) {
-                candidateDeals.push_back(&deal);
+        // check if rule is in existing deal and move it if so
+
+        if (!chosen) {
+            std::vector<Deal*> candidateDeals;
+            for (auto& [name, deal] : deals) {
+                if (deal.IsOpen()) {
+                    candidateDeals.push_back(&deal);
+                }
+            }
+
+
+            int index = PickRandom(candidateDeals.size());
+            log::info("ActivateRule: index = {} out of {}", index, deals.size());
+            if (candidateDeals.empty() || index == candidateDeals.size()) {
+                auto name = GetNextDealName();
+                chosen = CreateDeal(name);
+            }
+            else {
+                chosen = candidateDeals[index];
             }
         }
-
-        Deal* chosen = nullptr;
-
-        int index = PickRandom(candidateDeals.size());
-        log::info("ActivateRule: index = {} out of {}", index, deals.size());
-        if (candidateDeals.empty() || index == candidateDeals.size()) {
-            auto name = GetNextDealName();
-            Deal deal(name);
-
-            auto key = Lowercase(name);
-
-            deals[key] = deal;
-            chosen = GetDealByName(key);
-        } else {
-            chosen = candidateDeals[index];
-        }
-
+        
         log::info("ActivateRule: selected deal {} {}", chosen->GetName(), chosen->rules.size());
 
         rule->Activate();
@@ -369,7 +380,7 @@ int DealManager::ActivateRule(std::string path) {
 
         return chosen->rules.size();
     } else {
-        log::error("ActivateRule: Invalid id {} given", path);
+        log::info("ActivateRule: Invalid id {} given", path);
         return -1;
     }
 }
@@ -389,6 +400,17 @@ void DealManager::RemoveDeal(std::string name) {
         log::info("RemoveDeal: {} not found", name);     
     }
 }
+
+void DealManager::SetDealLockIn(std::string a_name, bool a_lockIn) {
+    log::info("SetDealLockIn: {}", a_name);
+    if (auto deal = GetDealByName(a_name)) {
+        deal->SetLockIn(a_lockIn);
+    }
+    else {
+        log::info("SetDealLockIn: {} not found", a_name);
+    }
+}
+
 
 void DealManager::ResetAllDeals() {
     for (auto [_, deal] : deals) {
@@ -506,7 +528,7 @@ std::vector<std::string> DealManager::GetDealRules(std::string name) {
             log::info("GetDealRules: no rules in deal {}", name);
         }
     } else {
-        log::error("GetDealRules: no deal found {}", name);
+        log::info("GetDealRules: no deal found {}", name);
     }
 
     return ruleNames;
@@ -563,15 +585,16 @@ void DealManager::ShowBuyoutMenu() {
 
     for (auto& [name, deal] : deals) {
         auto cost = deal.GetCost();
-        dealNames.push_back(deal.GetName());
-        
-        options.push_back(std::format("{} [{}]", name, cost));
+
+        if (!deal.GetLockIn()) {
+            dealNames.push_back(deal.GetName());
+            options.push_back(std::format("{} [{}]", name, cost));
+        }
     }
 
     options.push_back("Cancel");
 
     log::info("Showing message box");
-
 
     menuChosen = false;
 
@@ -695,8 +718,6 @@ int DealManager::CalculateRuleWeight(Rule* rule, int targetSeverity) {
     };
 
     score = std::max(1, score);
-
-    log::info("CalculateRuleWeight: {} = {}", rule->GetId(), score);
 
     return score;
 }

@@ -57,6 +57,8 @@ void Deal::Serialize(SKSE::SerializationInterface* serde) {
     for (auto rule : rules) {
         Serialization::Write<std::string>(serde, rule->GetId());
     }
+
+    Serialization::Write<bool>(serde, lockIn);
 }
 
 Deal::Deal(SKSE::SerializationInterface* serde) {
@@ -76,4 +78,6 @@ Deal::Deal(SKSE::SerializationInterface* serde) {
             SKSE::log::info("Deal Constructor: Failed to load in rule {}", path);
         }
     }
+
+    lockIn = Serialization::Read<bool>(serde);
 }

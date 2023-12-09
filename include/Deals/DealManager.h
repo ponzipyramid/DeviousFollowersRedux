@@ -19,9 +19,11 @@ namespace DFF {
         
         bool CanDisableRule(std::string rule);
 
-        int ActivateRule(std::string name);
+        int ActivateRule(std::string name, std::string a_dealName = "", bool a_create = false);
         
         void RemoveDeal(std::string name);
+
+        void SetDealLockIn(std::string a_name, bool a_lockIn);
 
         void ResetAllDeals();
 
@@ -74,13 +76,13 @@ namespace DFF {
     private:
         DealManager() = default;
 
+        Deal* CreateDeal(std::string name);
         Rule* GetRuleByPath(std::string path);
         Deal* GetDealByName(std::string path);
         Pack* GetPackByName(std::string path);
         std::string GetNextDealName();
         int CalculateRuleWeight(Rule* rule, int targetSeverity);
         int CalculateTargetSeverity();
-
 
         mutable std::mutex _lock;
 

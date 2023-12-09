@@ -35,6 +35,9 @@ set(headers
         include/Util/UI.hpp
         include/Util/Parse.hpp
         include/Util/Serialization.hpp
+
+        include/Relationship/RelManager.h
+        include/Relationship/RelStage.h
     )
 
 set(sources
@@ -48,6 +51,8 @@ set(sources
         src/Device/DeviceManager.cpp
         src/Papyrus/Papyrus.cpp
         src/Main.cpp
+
+        src/Relationship/RelManager.cpp
 
         ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
 

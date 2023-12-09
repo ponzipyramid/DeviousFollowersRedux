@@ -1,5 +1,6 @@
 #include <Deals/DealManager.h>
 #include "Device/DeviceManager.h"
+#include "Relationship/RelManager.h"
 
 #include "Config/Config.h"
 #include "Papyrus/Papyrus.h"
@@ -128,6 +129,7 @@ namespace {
                 case MessagingInterface::kDataLoaded: // All ESM/ESL/ESP plugins have loaded, main menu is now active.
                     // It is now safe to access form data.
                     DFF::DeviceManager::GetSingleton().Init();
+                    DFF:RelManager::GetSingleton().Init();
                     DFF::DealManager::GetSingleton().Init();
                     break;
                 // Skyrim game events.

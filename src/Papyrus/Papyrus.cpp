@@ -2,6 +2,7 @@
 
 #include <Deals/DealManager.h>
 #include <Device/DeviceManager.h>
+#include <Relationship/RelManager.h>
 
 using namespace DFF;
 using namespace RE;
@@ -29,8 +30,8 @@ namespace {
     void Pause(StaticFunctionTag*) { DealManager::GetSingleton().Pause(); }
     void Resume(StaticFunctionTag*) { DealManager::GetSingleton().Resume(); }
 
-    int ActivateRule(StaticFunctionTag*, std::string path) { 
-        return DealManager::GetSingleton().ActivateRule(path);
+    int ActivateRule(StaticFunctionTag*, std::string a_path, std::string a_dealName, bool a_create) { 
+        return DealManager::GetSingleton().ActivateRule(a_path, a_dealName, a_create);
     }
 
     RE::TESGlobal* GetRuleGlobal(StaticFunctionTag*, std::string path) { 
@@ -148,6 +149,34 @@ namespace {
     RE::TESObjectARMO* GetWornItemByKeyword(StaticFunctionTag*, RE::Actor* actor, RE::BGSKeyword* kwd) {
         return DeviceManager::GetSingleton().GetWornItemByKeyword(actor, kwd);
     }
+
+    void ActivateRelationshipStage(StaticFunctionTag*, int stage) {
+        RelManager::GetSingleton().ActivateRelationshipStage(stage);
+    }
+
+    std::string GetRelationshipStageDeal(StaticFunctionTag*) {
+        return RelManager::GetSingleton().GetRelationshipStageDeal();
+    }
+
+    std::vector<std::string> GetRelationshipStageRules(StaticFunctionTag*) {
+        return RelManager::GetSingleton().GetRelationshipStageRules();
+    }
+
+    bool GetRelStageSettingBool(StaticFunctionTag*, std::string setting) {
+        return RelManager::GetSingleton().GetRelStageSetting<bool>(setting);
+    }
+
+    float GetRelStageSettingFloat(StaticFunctionTag*, std::string setting) {
+        return RelManager::GetSingleton().GetRelStageSetting<float>(setting);
+    }
+
+    std::string GetRelStageSettingString(StaticFunctionTag*, std::string setting) {
+        return RelManager::GetSingleton().GetRelStageSetting<std::string>(setting);
+    }
+
+    void SetDealLockIn(StaticFunctionTag*, std::string a_dealName, bool a_lockIn) {
+        return DealManager::GetSingleton().SetDealLockIn(a_dealName, a_lockIn);
+    }
 }
 
 bool DFF::RegisterDealManager(IVirtualMachine* vm) {
@@ -179,10 +208,20 @@ bool DFF::RegisterDealManager(IVirtualMachine* vm) {
     vm->RegisterFunction("ShowBuyoutMenuInternal", PapyrusClass, ShowBuyoutMenu);
     vm->RegisterFunction("GetBuyoutMenuResult", PapyrusClass, GetBuyoutMenuResult);
     vm->RegisterFunction("SetRuleValid", PapyrusClass, SetRuleValid);
+    vm->RegisterFunction("SetDealLockIn", PapyrusClass, SetDealLockIn);
     
     // Device functions
     vm->RegisterFunction("GetRandomDeviceByKeyword", PapyrusDeviceClass, GetRandomDeviceByKeyword);
     vm->RegisterFunction("GetWornItemByKeyword", PapyrusDeviceClass, GetWornItemByKeyword);
+
+    // Relationship functions
+    vm->RegisterFunction("ActivateRelationshipStage", PapyrusClass, ActivateRelationshipStage);
+    vm->RegisterFunction("GetRelationshipStageRules", PapyrusClass, GetRelationshipStageRules);
+    vm->RegisterFunction("GetRelationshipStageDeal", PapyrusClass, GetRelationshipStageDeal);
+    vm->RegisterFunction("GetRelStageSettingBool", PapyrusClass, GetRelStageSettingBool);
+    vm->RegisterFunction("GetRelStageSettingFloat", PapyrusClass, GetRelStageSettingFloat);
+    vm->RegisterFunction("GetRelStageSettingString", PapyrusClass, GetRelStageSettingString);
+
 
     return true;
 }
